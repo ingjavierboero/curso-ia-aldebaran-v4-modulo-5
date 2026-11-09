@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { createJsonLogger } from '../../src/infrastructure/http/authLog.js';
 import { type TestApp, createTestApp, sessionCookieFrom } from '../support/testApp.js';
 
@@ -271,6 +272,32 @@ describe('FR-08 y errores', () => {
     const errorLog = t.logs.find((l) => l.level === 'error');
     expect(JSON.stringify(errorLog?.record)).toMatch(/SQLITE_BUSY/);
   });
+
+  it('DrizzleQueryError en un caso de uso se loguea con la query y la causa, nunca con los params', async () => {
+    const QUERY = 'insert into "sessions" ("token_hash", "user_id") values (?, ?)';
+    const PARAMS = ['tokenhash-secreto-abc123', '$argon2id$v=19$hash-secreto', 'persona@secreta.com'];
+    t.cleanup();
+    t = await createTestApp({
+      login: {
+        execute: async () => {
+          const cause = Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' });
+          throw new DrizzleQueryError(QUERY, PARAMS, cause);
+        },
+      },
+    });
+
+    const res = await request(t.app).post('/api/auth/login').send({ email: 'admin@empresa.com', password: PASSWORD });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: 'Error interno' });
+    const errorLog = t.logs.find((l) => l.level === 'error');
+    expect(errorLog).toBeDefined();
+    const logged = JSON.stringify(errorLog?.record);
+    expect(logged).toContain(QUERY.replace(/"/g, '\\"'));
+    expect(logged).toMatch(/SQLITE_BUSY: database is locked/);
+    for (const param of PARAMS) expect(logged).not.toContain(param);
+    expect(logged).not.toMatch(/params:/);
+  });
 });
 
 describe('authLog', () => {
@@ -295,6 +322,18 @@ describe('authLog', () => {
     expect(everything).not.toContain(PASSWORD);
     expect(everything).not.toContain('clave-equivocada');
     expect(everything).not.toMatch(/aldebaran_sid|token/i);
+  });
+
+  it('un login con email inválido se registra como invalid con email null, sin el texto crudo', async () => {
+    // Una contraseña escrita por error en el campo email no debe quedar en el log (R-05).
+    const res = await request(t.app).post('/api/auth/login').send({ email: '  MiClave$ecreta99 ', password: PASSWORD });
+
+    expect(res.status).toBe(400);
+    const attempts = t.logs.filter((l) => l.record.event === 'login').map((l) => l.record);
+    expect(attempts).toEqual([
+      { event: 'login', outcome: 'invalid', email: null, ip: expect.any(String), at: '2026-11-04T12:00:00.000Z' },
+    ]);
+    expect(JSON.stringify(t.logs).toLowerCase()).not.toContain('miclave$ecreta99');
   });
 
   it('createJsonLogger escribe una línea JSON por registro en el destino (stdout)', () => {

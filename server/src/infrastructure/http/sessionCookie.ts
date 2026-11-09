@@ -3,9 +3,15 @@ import type { CookieOptions, Request, Response } from 'express';
 /** Nombre de la cookie de sesión (ADR-001). */
 export const SESSION_COOKIE = 'aldebaran_sid';
 
-/** `true` si la cookie debe llevar `Secure` (por defecto, `NODE_ENV=production`). */
+/** Únicos `NODE_ENV` en que la cookie va sin `Secure` (HTTP local y tests). */
+const INSECURE_COOKIE_ENVS: ReadonlySet<string> = new Set(['development', 'test']);
+
+/**
+ * `true` si la cookie debe llevar `Secure`. Falla cerrado: es `Secure` salvo que `NODE_ENV` sea
+ * `development` o `test`, así un deploy sin la variable no emite la cookie sin `Secure`.
+ */
 export function defaultSecureCookie(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV === 'production';
+  return !INSECURE_COOKIE_ENVS.has(env.NODE_ENV ?? '');
 }
 
 /** httpOnly + SameSite=Strict + Path=/, sin Max-Age ni Expires (cookie de sesión del navegador). */

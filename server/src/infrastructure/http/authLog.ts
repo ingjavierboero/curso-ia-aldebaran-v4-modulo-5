@@ -1,5 +1,7 @@
 import type { Request } from 'express';
 import type { Clock } from '../../domain/shared/Clock.js';
+import { Email } from '../../domain/user/Email.js';
+import { InvalidEmail } from '../../domain/user/errors.js';
 
 export type LogRecord = Record<string, unknown>;
 
@@ -21,9 +23,21 @@ export function createJsonLogger(write: (line: string) => void = (line) => proce
 export type AuthEvent = 'login' | 'first_admin';
 export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'error';
 
+/** El email normalizado por `Email.create`, o `null` si no es un email válido (`InvalidEmail`). */
+function loggableEmail(rawEmail: string): string | null {
+  try {
+    return Email.create(rawEmail).value;
+  } catch (err) {
+    if (err instanceof InvalidEmail) return null;
+    throw err;
+  }
+}
+
 /**
  * Registra un intento de login o de registro del primer Admin (R-05): `{ event, outcome, email, ip, at }`.
- * El email se registra normalizado (trim + minúsculas); la contraseña y el token no se pasan nunca.
+ * El email se registra normalizado (trim + minúsculas). Uno inválido no tiene forma normalizada y se
+ * registra como `null`: así una contraseña escrita en el campo email no queda en el log. La
+ * contraseña y el token no se pasan nunca.
  */
 export function logAuthAttempt(
   logger: Logger,
@@ -36,7 +50,7 @@ export function logAuthAttempt(
   logger.info({
     event,
     outcome,
-    email: rawEmail.trim().toLowerCase(),
+    email: loggableEmail(rawEmail),
     ip: req.ip ?? null,
     at: clock.now().toISOString(),
   });

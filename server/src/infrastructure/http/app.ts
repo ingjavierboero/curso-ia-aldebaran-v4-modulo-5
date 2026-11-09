@@ -23,7 +23,7 @@ export interface AppDeps {
   getSetupStatus: Pick<GetSetupStatus, 'execute'>;
   clock: Clock;
   logger: Logger;
-  /** `Secure` en la cookie de sesión. Por defecto, `NODE_ENV=production`. */
+  /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
   secureCookie?: boolean;
 }
 

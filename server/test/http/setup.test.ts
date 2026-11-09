@@ -111,4 +111,40 @@ describe('setup del primer Admin', () => {
     expect([a.status, b.status].sort()).toEqual([201, 409]);
     expect(t.countUsers()).toBe(1);
   });
+
+  it('POST /api/setup/first-admin con name de más de 100 caracteres es rechazado con 400 sin ejecutar el caso de uso', async () => {
+    let calls = 0;
+    t.cleanup();
+    t = await createTestApp({
+      registerFirstAdmin: {
+        execute: async () => {
+          calls++;
+          throw new Error('no debería ejecutarse');
+        },
+      },
+    });
+
+    const res = await request(t.app)
+      .post('/api/setup/first-admin')
+      .send({ name: 'a'.repeat(101), email: 'admin@empresa.com', password: '12345678' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/name/);
+    expect(calls).toBe(0);
+    expect(t.logs.filter((l) => l.record.event === 'first_admin')).toHaveLength(0);
+  });
+
+  it('POST /api/setup/first-admin con email inválido se registra como invalid con email null, sin el texto crudo', async () => {
+    const res = await request(t.app)
+      .post('/api/setup/first-admin')
+      .send({ name: 'Ana', email: 'MiClave$ecreta99', password: '12345678' });
+
+    expect(res.status).toBe(400);
+    const registros = t.logs.filter((l) => l.record.event === 'first_admin').map((l) => l.record);
+    expect(registros).toEqual([
+      { event: 'first_admin', outcome: 'invalid', email: null, ip: expect.any(String), at: '2026-11-04T12:00:00.000Z' },
+    ]);
+    expect(JSON.stringify(t.logs).toLowerCase()).not.toContain('miclave$ecreta99');
+    expect(t.countUsers()).toBe(0);
+  });
 });

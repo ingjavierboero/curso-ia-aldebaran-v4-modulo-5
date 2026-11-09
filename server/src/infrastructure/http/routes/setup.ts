@@ -6,6 +6,7 @@ import type { Clock } from '../../../domain/shared/Clock.js';
 import { Email } from '../../../domain/user/Email.js';
 import { InvalidEmail, InvalidName, WeakPassword } from '../../../domain/user/errors.js';
 import { PasswordPolicy } from '../../../domain/user/PasswordPolicy.js';
+import { USER_NAME_MAX_LENGTH } from '../../../domain/user/User.js';
 import { type AuthOutcome, type Logger, logAuthAttempt } from '../authLog.js';
 import { bodyObject, requiredString } from '../body.js';
 
@@ -32,7 +33,7 @@ export function setupRoutes(deps: SetupRoutesDeps): Router {
     const body = bodyObject(req.body);
     // Acá, tipo y máximos; el dominio aplica el resto: nombre de 1 a 100 tras el trim (`parseUserName`),
     // formato del email y mínimo de 8 (`PasswordPolicy`).
-    const name = requiredString(body, 'name');
+    const name = requiredString(body, 'name', USER_NAME_MAX_LENGTH);
     const email = requiredString(body, 'email', Email.MAX_LENGTH);
     const password = requiredString(body, 'password', PasswordPolicy.MAX_LENGTH);
 
