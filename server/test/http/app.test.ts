@@ -23,7 +23,8 @@ function expectNotFoundWithSecurityHeaders(res: request.Response): void {
 }
 
 describe('createApp', () => {
-  it('GET /api/inexistente responde 404 rechazado con JSON y headers de seguridad', async () => {
+  // GET /api/inexistente responde 404 rechazado con JSON y headers de seguridad
+  it('test_get_api_inexistente_responde_404_json_con_headers_de_seguridad', async () => {
     // /api niega por defecto (FR-01): con sesión válida, la ruta inexistente llega al 404.
     await t.seedUser({ email: 'admin@empresa.com' });
     const login = await request(t.app)

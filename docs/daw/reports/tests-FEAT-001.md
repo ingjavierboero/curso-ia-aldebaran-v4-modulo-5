@@ -1,6 +1,6 @@
 # Test run FEAT-001
 
-Suite completa del monorepo (proyectos `server` y `web` de `vitest.config.ts`), corrida en el re-cierre de CODE sobre `32250e3` más las correcciones del SAST (sin commitear), el 2026-11-09.
+Suite completa del monorepo (proyectos `server` y `web` de `vitest.config.ts`), corrida el 2026-11-09 en el re-cierre de CODE, después del bucle correctivo VERIFY → CODE → PLAN → CODE. La base es `9caff23` más el renombrado, sin commitear, de los 50 Required tests a sus identificadores `test_...`.
 
 | Field | Value |
 |---|---|
@@ -11,12 +11,17 @@ Suite completa del monorepo (proyectos `server` y `web` de `vitest.config.ts`), 
 | Failed | 0 |
 | Skipped | 0 |
 | Line coverage | 90.44% |
-| Branch coverage | 86.86% |
+| Branch coverage | 86.49% |
 | Function coverage | 94.48% |
 | Coverage floor | 80% (method default — .daw/rules/testing.instructions.md) |
 | Lint | `npm run typecheck` (`tsc -b`) — clean, 0 errors; no hay linter configurado en el repo (ni ESLint, Biome ni oxlint) |
 
-Detalle: 28 archivos de test (24 de `server`, 4 de `web`): 112 tests de server y 18 de web. Statements 90.14% (512/568), lines 464/513, branches 238/274, functions 137/145. `AGENTS.md` no declara un piso de cobertura, así que rige el del método.
+Detalle:
+- 28 archivos de test: 24 de `server` y 4 de `web`.
+- 130 tests: 112 de server y 18 de web.
+- Statements 90.14% (512/568), lines 464/513, branches 237/274, functions 137/145.
+- `AGENTS.md` no declara un piso de cobertura, así que rige el del método.
+- El renombrado no cambia la cantidad de tests ni lo que verifican: el diff solo toca las líneas de título y agrega un comentario con la frase vieja.
 
 ## Failures
 (none)
@@ -25,4 +30,4 @@ Detalle: 28 archivos de test (24 de `server`, 4 de `web`): 112 tests de server y
 (none)
 
 ## Notas
-Corridas previas de este re-cierre, con la máquina a un load average de ~70, terminaron con 2 y 5 tests de `web/` en rojo por `[vitest-pool-runner]: Timeout waiting for worker to respond` (el worker de jsdom no llegó a arrancar); el código de `web/` no cambió en estas correcciones. Se descartaron y se repitió la corrida completa; este reporte describe solo la corrida en verde.
+El cierre anterior registró corridas con la máquina cargada (load average ~70) que fallaron por `Timeout waiting for worker to respond`. Esta se corrió con load average ~4 y salió en verde a la primera.

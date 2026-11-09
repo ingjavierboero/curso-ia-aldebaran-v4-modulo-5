@@ -3,7 +3,8 @@ import { Unauthenticated } from '../../src/application/auth/errors.js';
 import { createAuthContext } from '../support/authContext.js';
 
 describe('Logout', () => {
-  it('Logout borra la sesión y AuthenticateSession posterior es rechazado (no autorizado)', async () => {
+  // Logout borra la sesión y AuthenticateSession posterior es rechazado (no autorizado)
+  it('test_logout_borra_la_sesion_y_authenticate_session_posterior_es_rechazado', async () => {
     const ctx = createAuthContext();
     ctx.seedUser({ email: 'admin@empresa.com', password: 'contraseña-segura' });
     const { token } = await ctx.login.execute({

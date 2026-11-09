@@ -28,7 +28,8 @@ function clearedCookie(setCookie: string | string[] | undefined): string | undef
 }
 
 describe('authMiddleware', () => {
-  it('GET /api/auth/session sin cookie es rechazado con 401 sin datos', async () => {
+  // GET /api/auth/session sin cookie es rechazado con 401 sin datos
+  it('test_get_session_sin_cookie_rechazado_401_sin_datos', async () => {
     const res = await request(t.app).get('/api/auth/session');
 
     expect(res.status).toBe(401);
@@ -47,7 +48,8 @@ describe('authMiddleware', () => {
     expect(JSON.stringify(t.logs)).not.toContain('inventado');
   });
 
-  it('GET /api/auth/session con FakeClock 24 h después de la última actividad es rechazado con 401', async () => {
+  // GET /api/auth/session con FakeClock 24 h después de la última actividad es rechazado con 401
+  it('test_get_session_24h_despues_de_la_ultima_actividad_rechazado_401', async () => {
     const cookie = await loginCookie();
 
     t.clock.advance(24 * HOUR);
@@ -58,7 +60,8 @@ describe('authMiddleware', () => {
     expect(clearedCookie(res.headers['set-cookie'])).toMatch(/^aldebaran_sid=;/);
   });
 
-  it('GET /api/auth/session con FakeClock 23 h después responde 200', async () => {
+  // GET /api/auth/session con FakeClock 23 h después responde 200
+  it('test_get_session_23h_despues_responde_200', async () => {
     const cookie = await loginCookie();
 
     t.clock.advance(23 * HOUR);

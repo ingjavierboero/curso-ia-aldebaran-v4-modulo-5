@@ -5,7 +5,8 @@ import { ANA, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('HomePage', () => {
-  it('HomePage al cerrar sesión navega a /login', async () => {
+  // HomePage al cerrar sesión navega a /login
+  it('test_home_page_cerrar_sesion_navega_a_login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, SESSION_401],
@@ -27,7 +28,8 @@ describe('HomePage', () => {
     expect(logoutCall?.body).toEqual({});
   });
 
-  it('401 en getSession desde la pantalla principal (sesión vencida) es rechazado y lleva a /login', async () => {
+  // 401 en getSession desde la pantalla principal (sesión vencida) es rechazado y lleva a /login
+  it('test_get_session_401_desde_home_sesion_vencida_lleva_a_login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       // La primera consulta (loader de `/`) es válida; la que hace la pantalla al volver a tener

@@ -5,7 +5,8 @@ import { SESSION_401, mockFetch } from './test/fetchMock';
 import { renderApp } from './test/renderApp';
 
 describe('router', () => {
-  it('/ sin sesión es rechazado y redirige a /login', async () => {
+  // / sin sesión es rechazado y redirige a /login
+  it('test_home_sin_sesion_redirige_a_login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       'GET /api/auth/session': SESSION_401,

@@ -29,7 +29,8 @@ describe('Argon2PasswordHasher', () => {
     t.cleanup();
   });
 
-  it('Argon2PasswordHasher con parámetros de producción guarda un hash $argon2id$ sin la contraseña en texto plano', async () => {
+  // Argon2PasswordHasher con parámetros de producción guarda un hash $argon2id$ sin la contraseña en texto plano
+  it('test_argon2_parametros_de_produccion_guarda_hash_argon2id_sin_contrasena', async () => {
     const hasher = new Argon2PasswordHasher();
 
     const passwordHash = await hasher.hash(PLAIN);
@@ -54,7 +55,8 @@ describe('Argon2PasswordHasher', () => {
     expect(await hasher.verify(row.password_hash, 'otra-contraseña')).toBe(false);
   });
 
-  it('Argon2PasswordHasher.verify con hash inválido devuelve false (error controlado)', async () => {
+  // Argon2PasswordHasher.verify con hash inválido devuelve false (error controlado)
+  it('test_argon2_verify_con_hash_invalido_devuelve_false', async () => {
     const hasher = new Argon2PasswordHasher();
 
     await expect(hasher.verify('no-es-un-hash-phc', PLAIN)).resolves.toBe(false);

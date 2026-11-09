@@ -40,7 +40,8 @@ describe('DrizzleUnitOfWork', () => {
     expect(new DrizzleUserRepository(t.db).countAll()).toBe(1);
   });
 
-  it('DrizzleUnitOfWork revierte la transacción si fn lanza', () => {
+  // DrizzleUnitOfWork revierte la transacción si fn lanza
+  it('test_drizzle_unit_of_work_revierte_la_transaccion_si_fn_lanza', () => {
     const outside = new DrizzleUserRepository(t.db);
     outside.insert(makeUser('u-0', 'previo@empresa.com'));
     const uow = new DrizzleUnitOfWork(t.db);

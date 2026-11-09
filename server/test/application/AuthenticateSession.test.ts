@@ -13,7 +13,8 @@ async function loggedIn() {
 }
 
 describe('AuthenticateSession', () => {
-  it('AuthenticateSession con última actividad hace 24 h es rechazado (Unauthenticated) y borra la sesión', async () => {
+  // AuthenticateSession con última actividad hace 24 h es rechazado (Unauthenticated) y borra la sesión
+  it('test_authenticate_session_24h_sin_actividad_rechazado_y_borra_la_sesion', async () => {
     const { ctx, token } = await loggedIn();
     ctx.clock.advance(24 * HOUR);
 
@@ -21,7 +22,8 @@ describe('AuthenticateSession', () => {
     expect(ctx.sessions.all()).toHaveLength(0);
   });
 
-  it('AuthenticateSession con última actividad hace 23 h devuelve el usuario y actualiza last_activity_at', async () => {
+  // AuthenticateSession con última actividad hace 23 h devuelve el usuario y actualiza last_activity_at
+  it('test_authenticate_session_23h_devuelve_usuario_y_actualiza_last_activity_at', async () => {
     const { ctx, user, token } = await loggedIn();
     ctx.clock.advance(23 * HOUR);
 
@@ -42,7 +44,8 @@ describe('AuthenticateSession', () => {
     expect(ctx.authenticateSession.execute(token).id).toBe(user.id);
   });
 
-  it('AuthenticateSession con token inexistente es rechazado (no autorizado)', () => {
+  // AuthenticateSession con token inexistente es rechazado (no autorizado)
+  it('test_authenticate_session_token_inexistente_rechazado', () => {
     const ctx = createAuthContext();
 
     expect(() => ctx.authenticateSession.execute('token-que-no-existe')).toThrow(Unauthenticated);

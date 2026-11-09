@@ -6,6 +6,7 @@
 | Tools | gitleaks (historial: 9 commits; `dir` sobre `server/src` y `web/src`), npm audit (npm 11), barrido manual con grep, triage de daw-sec-auditor |
 | Date | 2026-11-09 |
 | Scope | `server/src` y `web/src` en `32250e3` más las correcciones de este cierre; `package.json`/`package-lock.json` de los tres workspaces |
+| Re-scan | 2026-11-09, re-cierre después del bucle correctivo VERIFY → CODE → PLAN → CODE. Desde `a08b5f5` solo cambiaron títulos de tests (`*.test.ts`/`*.test.tsx`), sin tocar código de producción ni dependencias. gitleaks (historial y directorios) sin leaks; npm audit: 0 vulnerabilities. Los veredictos de abajo siguen vigentes |
 
 | Rule | Verdict | Notes |
 |---|---|---|

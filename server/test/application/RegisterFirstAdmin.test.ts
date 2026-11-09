@@ -6,7 +6,8 @@ import { createAuthContext } from '../support/authContext.js';
 const VALID = { name: 'Ana Pérez', email: 'admin@empresa.com', password: 'contraseña-segura' };
 
 describe('RegisterFirstAdmin', () => {
-  it('RegisterFirstAdmin con sistema vacío crea un Admin Activo que puede hacer Login', async () => {
+  // RegisterFirstAdmin con sistema vacío crea un Admin Activo que puede hacer Login
+  it('test_register_first_admin_sistema_vacio_crea_admin_activo_que_hace_login', async () => {
     const ctx = createAuthContext();
 
     const created = await ctx.registerFirstAdmin.execute({
@@ -31,7 +32,8 @@ describe('RegisterFirstAdmin', () => {
     expect(session.user).toEqual(created);
   });
 
-  it('RegisterFirstAdmin con contraseña de 7 caracteres es rechazado con WeakPassword y no crea usuario', async () => {
+  // RegisterFirstAdmin con contraseña de 7 caracteres es rechazado con WeakPassword y no crea usuario
+  it('test_register_first_admin_contrasena_de_7_rechazado_weak_password_sin_crear_usuario', async () => {
     const ctx = createAuthContext();
 
     await expect(
@@ -41,7 +43,8 @@ describe('RegisterFirstAdmin', () => {
     expect(ctx.hasher.hashCalls).toHaveLength(0);
   });
 
-  it('RegisterFirstAdmin con email inválido es rechazado con InvalidEmail', async () => {
+  // RegisterFirstAdmin con email inválido es rechazado con InvalidEmail
+  it('test_register_first_admin_email_invalido_rechazado_invalid_email', async () => {
     const ctx = createAuthContext();
 
     await expect(
@@ -50,7 +53,8 @@ describe('RegisterFirstAdmin', () => {
     expect(ctx.users.countAll()).toBe(0);
   });
 
-  it('RegisterFirstAdmin con nombre faltante es rechazado con InvalidName', async () => {
+  // RegisterFirstAdmin con nombre faltante es rechazado con InvalidName
+  it('test_register_first_admin_nombre_faltante_rechazado_invalid_name', async () => {
     const ctx = createAuthContext();
 
     await expect(ctx.registerFirstAdmin.execute({ ...VALID, name: '   ' })).rejects.toBeInstanceOf(
@@ -59,7 +63,8 @@ describe('RegisterFirstAdmin', () => {
     expect(ctx.users.countAll()).toBe(0);
   });
 
-  it('RegisterFirstAdmin con un usuario existente es rechazado con FirstAdminAlreadyExists (conflict) sin llamar a hash', async () => {
+  // RegisterFirstAdmin con un usuario existente es rechazado con FirstAdminAlreadyExists (conflict) sin llamar a hash
+  it('test_register_first_admin_con_usuario_existente_rechazado_conflict_sin_hash', async () => {
     const ctx = createAuthContext();
     ctx.seedUser({ email: 'otro@empresa.com' });
 

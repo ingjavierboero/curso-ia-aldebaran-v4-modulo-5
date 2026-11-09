@@ -13,7 +13,8 @@ afterEach(() => {
 });
 
 describe('setup del primer Admin', () => {
-  it('GET /api/setup/status sin usuarios devuelve needsFirstAdmin true y POST /api/setup/first-admin con 8 caracteres crea Admin Activo que hace login', async () => {
+  // GET /api/setup/status sin usuarios devuelve needsFirstAdmin true y POST /api/setup/first-admin con 8 caracteres crea Admin Activo que hace login
+  it('test_setup_status_sin_usuarios_y_first_admin_con_8_caracteres_crea_admin_que_hace_login', async () => {
     const status = await request(t.app).get('/api/setup/status');
     expect(status.status).toBe(200);
     expect(status.body).toEqual({ needsFirstAdmin: true });
@@ -46,7 +47,8 @@ describe('setup del primer Admin', () => {
     expect(JSON.stringify(t.logs)).not.toContain('12345678');
   });
 
-  it('POST /api/setup/first-admin con contraseña de 7 caracteres es rechazado con 400 y no crea usuario', async () => {
+  // POST /api/setup/first-admin con contraseña de 7 caracteres es rechazado con 400 y no crea usuario
+  it('test_post_first_admin_contrasena_de_7_rechazado_400_sin_crear_usuario', async () => {
     const res = await request(t.app)
       .post('/api/setup/first-admin')
       .send({ name: 'Ana Pérez', email: 'admin@empresa.com', password: '1234567' });
@@ -87,7 +89,8 @@ describe('setup del primer Admin', () => {
     expect(t.countUsers()).toBe(0);
   });
 
-  it('POST /api/setup/first-admin con usuario existente es rechazado con 409 (conflict)', async () => {
+  // POST /api/setup/first-admin con usuario existente es rechazado con 409 (conflict)
+  it('test_post_first_admin_con_usuario_existente_rechazado_409', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
 
     const status = await request(t.app).get('/api/setup/status');
@@ -102,7 +105,8 @@ describe('setup del primer Admin', () => {
     expect(t.countUsers()).toBe(1);
   });
 
-  it('Dos POST /api/setup/first-admin simultáneos: un 201, un 409 duplicado rechazado y un solo usuario', async () => {
+  // Dos POST /api/setup/first-admin simultáneos: un 201, un 409 duplicado rechazado y un solo usuario
+  it('test_dos_post_first_admin_simultaneos_un_201_un_409_y_un_solo_usuario', async () => {
     const [a, b] = await Promise.all([
       request(t.app).post('/api/setup/first-admin').send({ name: 'Ana', email: 'ana@empresa.com', password: '12345678' }),
       request(t.app).post('/api/setup/first-admin').send({ name: 'Beto', email: 'beto@empresa.com', password: '12345678' }),

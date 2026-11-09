@@ -31,7 +31,8 @@ async function loginAs(email: string, password = PASSWORD): Promise<string> {
 }
 
 describe('POST /api/auth/login', () => {
-  it('POST /api/auth/login con credenciales válidas responde 200, PublicUser y cookie httpOnly SameSite=Strict', async () => {
+  // POST /api/auth/login con credenciales válidas responde 200, PublicUser y cookie httpOnly SameSite=Strict
+  it('test_post_login_credenciales_validas_200_public_user_y_cookie_segura', async () => {
     const user = await t.seedUser({ email: 'admin@empresa.com', name: 'Ana Pérez' });
 
     const res = await request(t.app).post('/api/auth/login').send({ email: 'admin@empresa.com', password: PASSWORD });
@@ -52,7 +53,8 @@ describe('POST /api/auth/login', () => {
     expect(countSessions()).toBe(1);
   });
 
-  it('POST /api/auth/login con email en mayúsculas inicia sesión', async () => {
+  // POST /api/auth/login con email en mayúsculas inicia sesión
+  it('test_post_login_email_en_mayusculas_inicia_sesion', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
 
     const res = await request(t.app).post('/api/auth/login').send({ email: 'Admin@Empresa.com', password: PASSWORD });
@@ -62,7 +64,8 @@ describe('POST /api/auth/login', () => {
     expect(sessionCookieFrom(res.headers['set-cookie'])).toBeDefined();
   });
 
-  it('POST /api/auth/login con contraseña incorrecta, email inexistente o usuario Inactivo es rechazado con 401 y el mismo mensaje', async () => {
+  // POST /api/auth/login con contraseña incorrecta, email inexistente o usuario Inactivo es rechazado con 401 y el mismo mensaje
+  it('test_post_login_credenciales_invalidas_401_con_el_mismo_mensaje', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
     await t.seedUser({ email: 'inactivo@empresa.com', status: 'inactivo' });
 
@@ -80,7 +83,8 @@ describe('POST /api/auth/login', () => {
     expect(countSessions()).toBe(0);
   });
 
-  it('POST /api/auth/login con campo faltante es rechazado con 400', async () => {
+  // POST /api/auth/login con campo faltante es rechazado con 400
+  it('test_post_login_campo_faltante_rechazado_400', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
 
     const sinPassword = await request(t.app).post('/api/auth/login').send({ email: 'admin@empresa.com' });
@@ -98,7 +102,8 @@ describe('POST /api/auth/login', () => {
     expect(countSessions()).toBe(0);
   });
 
-  it('POST /api/auth/login sin Content-Type JSON es rechazado con 415', async () => {
+  // POST /api/auth/login sin Content-Type JSON es rechazado con 415
+  it('test_post_login_sin_content_type_json_rechazado_415', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
 
     const form = await request(t.app)
@@ -204,7 +209,8 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('POST /api/auth/logout', () => {
-  it('POST /api/auth/logout y luego GET /api/auth/session con la misma cookie es rechazado con 401', async () => {
+  // POST /api/auth/logout y luego GET /api/auth/session con la misma cookie es rechazado con 401
+  it('test_post_logout_y_get_session_con_la_misma_cookie_rechazado_401', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
     const cookie = await loginAs('admin@empresa.com');
 
@@ -235,7 +241,8 @@ describe('POST /api/auth/logout', () => {
 });
 
 describe('FR-08 y errores', () => {
-  it('Ninguna respuesta de login, first-admin ni session contiene passwordHash ni password_hash', async () => {
+  // Ninguna respuesta de login, first-admin ni session contiene passwordHash ni password_hash
+  it('test_ninguna_respuesta_contiene_password_hash', async () => {
     const created = await request(t.app)
       .post('/api/setup/first-admin')
       .send({ name: 'Ana Pérez', email: 'admin@empresa.com', password: PASSWORD });
@@ -254,7 +261,8 @@ describe('FR-08 y errores', () => {
     }
   });
 
-  it('Error inesperado en un caso de uso responde 500 sin stack (error)', async () => {
+  // Error inesperado en un caso de uso responde 500 sin stack (error)
+  it('test_error_inesperado_en_caso_de_uso_responde_500_sin_stack', async () => {
     t.cleanup();
     t = await createTestApp({
       login: {
@@ -301,7 +309,8 @@ describe('FR-08 y errores', () => {
 });
 
 describe('authLog', () => {
-  it('authLog registra el intento de login sin la contraseña', async () => {
+  // authLog registra el intento de login sin la contraseña
+  it('test_auth_log_registra_el_intento_de_login_sin_la_contrasena', async () => {
     await t.seedUser({ email: 'admin@empresa.com' });
 
     await request(t.app).post('/api/auth/login').send({ email: 'Admin@Empresa.com', password: PASSWORD });

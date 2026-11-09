@@ -4,7 +4,8 @@ import { Email } from '../../src/domain/user/Email.js';
 import { User } from '../../src/domain/user/User.js';
 
 describe('PublicUser', () => {
-  it('PublicUser no tiene la propiedad passwordHash', () => {
+  // PublicUser no tiene la propiedad passwordHash
+  it('test_public_user_no_tiene_password_hash', () => {
     const user = new User({
       id: 'u-1',
       name: 'Ana Pérez',

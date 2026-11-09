@@ -38,7 +38,8 @@ describe('DrizzleSessionRepository', () => {
     t.cleanup();
   });
 
-  it('DrizzleSessionRepository touch actualiza last_activity_at y delete la elimina', () => {
+  // DrizzleSessionRepository touch actualiza last_activity_at y delete la elimina
+  it('test_drizzle_session_repository_touch_actualiza_y_delete_elimina', () => {
     const repo = new DrizzleSessionRepository(t.db);
     repo.insert(makeSession());
 

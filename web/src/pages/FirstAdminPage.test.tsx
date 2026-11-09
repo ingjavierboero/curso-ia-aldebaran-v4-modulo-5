@@ -4,7 +4,8 @@ import { ANA, SESSION_401, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('FirstAdminPage', () => {
-  it('/login con needsFirstAdmin true redirige a /setup y FirstAdminPage crea el Admin y navega a /login', async () => {
+  // /login con needsFirstAdmin true redirige a /setup y FirstAdminPage crea el Admin y navega a /login
+  it('test_login_con_needs_first_admin_redirige_a_setup_y_crea_admin', async () => {
     const fetchMock = mockFetch({
       // loader de /login, loader de /setup y, ya creado el Admin, de nuevo /login.
       'GET /api/setup/status': [
@@ -32,7 +33,8 @@ describe('FirstAdminPage', () => {
     expect(new Headers(call?.init?.headers).get('Content-Type')).toBe('application/json');
   });
 
-  it('FirstAdminPage con contraseña de 7 caracteres es rechazado en el formulario', async () => {
+  // FirstAdminPage con contraseña de 7 caracteres es rechazado en el formulario
+  it('test_first_admin_page_contrasena_de_7_rechazado_en_el_formulario', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: true } },
       'POST /api/setup/first-admin': { status: 201, body: { user: ANA } },
@@ -49,7 +51,8 @@ describe('FirstAdminPage', () => {
     expect(router.state.location.pathname).toBe('/setup');
   });
 
-  it('/setup con usuarios existentes redirige a /login y un 409 duplicado rechazado navega a /login', async () => {
+  // /setup con usuarios existentes redirige a /login y un 409 duplicado rechazado navega a /login
+  it('test_setup_con_usuarios_existentes_redirige_a_login_y_409_navega_a_login', async () => {
     // 1) Con usuarios existentes, /setup no se muestra.
     mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },

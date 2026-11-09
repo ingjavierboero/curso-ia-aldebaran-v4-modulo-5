@@ -90,3 +90,8 @@ Reemplazan a tres decisiones del Block 4 (la de `Secure`, la de `name` en HTTP y
 - Deuda conocida (menor): `server/src/main.ts` registra `err.stack` en `startup_failed`; si el arranque lanzara un `DrizzleQueryError` llevaría params, pero en el arranque no hay datos de usuarios — Cierre de CODE
 - Registro de la corrida: en el re-cierre, dos corridas con la máquina a load average ~70 dieron 2 y 5 tests de `web/` en rojo por `Timeout waiting for worker to respond` (sin cambios en `web/`); la corrida completa repetida dio 130/130 y es la que describe `docs/daw/reports/tests-FEAT-001.md` — Cierre de CODE
 - Pendiente fuera de los tests: el arranque real de `npm run dev` por HTTP con `NODE_ENV=development` no se pudo probar desde el agente (lo bloqueó el clasificador de permisos); queda para la prueba manual junto con la del Block 5 — Cierre de CODE
+
+## Bucle correctivo VERIFY → CODE → PLAN → CODE (F-VER-06)
+
+- `validate_verify.py` (F-VER-06) solo lee como nombres de test los identificadores `test[\w-]+`, y `validate_spec.py` (F-SPEC-06) había aceptado los títulos en frase. Como no se puede editar `.daw/` ni la spec sellada, se eligió renombrar los 50 Required tests de la spec a identificadores `test_...` (snake_case en castellano, sin tildes) y los títulos de los tests en el código. La inconsistencia entre los dos validadores queda para reportarla a quien mantiene DAW — Javier Boero — 2026-11-09 — Bucle correctivo
+- En el código, cada test renombrado lleva encima un comentario con su frase anterior. El diff solo cambia la línea del título y agrega ese comentario (100 líneas agregadas y 50 borradas en 18 archivos); los tests que no son Required conservan sus títulos en frase — Javier Boero — 2026-11-09 — Bucle correctivo

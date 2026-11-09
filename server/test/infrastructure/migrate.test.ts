@@ -18,7 +18,8 @@ describe('base de datos', () => {
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  it('migrate crea las tablas users y sessions con sus índices únicos', () => {
+  // migrate crea las tablas users y sessions con sus índices únicos
+  it('test_migrate_crea_tablas_users_y_sessions_con_indices_unicos', () => {
     const db = createDb(join(workDir, 'aldebaran.db'));
     opened.push(db);
 
@@ -62,7 +63,8 @@ describe('base de datos', () => {
     expect(() => insert.run('u3', 'a@b.co', 'editor')).toThrow(/UNIQUE/);
   });
 
-  it('createDb crea el directorio faltante con permisos 0700 y el archivo con 0600', () => {
+  // createDb crea el directorio faltante con permisos 0700 y el archivo con 0600
+  it('test_createdb_crea_directorio_0700_y_archivo_0600', () => {
     const dir = join(workDir, 'nested', 'data');
     const file = join(dir, 'aldebaran.db');
 
@@ -106,7 +108,8 @@ describe('base de datos', () => {
     expect(statSync(file).mode & 0o777).toBe(0o600);
   });
 
-  it('createDb con ruta no creable lanza error con la ruta (error)', () => {
+  // createDb con ruta no creable lanza error con la ruta (error)
+  it('test_createdb_con_ruta_no_creable_lanza_error_con_la_ruta', () => {
     // un archivo regular en el medio de la ruta: mkdir falla con ENOTDIR, incluso corriendo como root
     const blocker = join(workDir, 'un-archivo');
     writeFileSync(blocker, '');

@@ -29,7 +29,8 @@ describe('DrizzleUserRepository', () => {
     t.cleanup();
   });
 
-  it('DrizzleUserRepository inserta y encuentra por email normalizado', () => {
+  // DrizzleUserRepository inserta y encuentra por email normalizado
+  it('test_drizzle_user_repository_inserta_y_encuentra_por_email_normalizado', () => {
     const repo = new DrizzleUserRepository(t.db);
     expect(repo.countAll()).toBe(0);
 
@@ -60,7 +61,8 @@ describe('DrizzleUserRepository', () => {
     expect(repo.findByEmail(Email.create('otro@empresa.com'))).toBeNull();
   });
 
-  it('DrizzleUserRepository con email duplicado es rechazado como FirstAdminAlreadyExists', () => {
+  // DrizzleUserRepository con email duplicado es rechazado como FirstAdminAlreadyExists
+  it('test_drizzle_user_repository_email_duplicado_rechazado_first_admin_already_exists', () => {
     const repo = new DrizzleUserRepository(t.db);
     repo.insert(makeUser({ id: 'u-1', email: 'admin@empresa.com' }));
 

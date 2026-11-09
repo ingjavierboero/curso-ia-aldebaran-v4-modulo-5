@@ -4,7 +4,8 @@ import { InvalidEmail } from '../../src/domain/user/errors.js';
 import { createAuthContext, DUMMY_HASH } from '../support/authContext.js';
 
 describe('Login', () => {
-  it('Login con email y contraseña correctos de un usuario Activo devuelve token y PublicUser', async () => {
+  // Login con email y contraseña correctos de un usuario Activo devuelve token y PublicUser
+  it('test_login_credenciales_correctas_usuario_activo_devuelve_token_y_public_user', async () => {
     const ctx = createAuthContext();
     const user = ctx.seedUser({ email: 'admin@empresa.com', password: 'contraseña-segura' });
 
@@ -40,7 +41,8 @@ describe('Login', () => {
     expect(stored?.createdAt.toISOString()).toBe(original);
   });
 
-  it('Login con Admin@Empresa.com encuentra al usuario admin@empresa.com', async () => {
+  // Login con Admin@Empresa.com encuentra al usuario admin@empresa.com
+  it('test_login_con_email_en_mayusculas_encuentra_al_usuario', async () => {
     const ctx = createAuthContext();
     const user = ctx.seedUser({ email: 'admin@empresa.com', password: 'contraseña-segura' });
 
@@ -53,7 +55,8 @@ describe('Login', () => {
     expect(result.user.email).toBe('admin@empresa.com');
   });
 
-  it('Login con contraseña incorrecta es rechazado con InvalidCredentials', async () => {
+  // Login con contraseña incorrecta es rechazado con InvalidCredentials
+  it('test_login_contrasena_incorrecta_rechazado_invalid_credentials', async () => {
     const ctx = createAuthContext();
     ctx.seedUser({ email: 'admin@empresa.com', password: 'contraseña-segura' });
 
@@ -63,7 +66,8 @@ describe('Login', () => {
     expect(ctx.sessions.all()).toHaveLength(0);
   });
 
-  it('Login con email inexistente es rechazado con InvalidCredentials y verifica contra el hash dummy', async () => {
+  // Login con email inexistente es rechazado con InvalidCredentials y verifica contra el hash dummy
+  it('test_login_email_inexistente_rechazado_y_verifica_contra_hash_dummy', async () => {
     const ctx = createAuthContext();
     ctx.seedUser({ email: 'admin@empresa.com', password: 'contraseña-segura' });
 
@@ -74,7 +78,8 @@ describe('Login', () => {
     expect(ctx.sessions.all()).toHaveLength(0);
   });
 
-  it('Login de usuario Inactivo es rechazado con InvalidCredentials', async () => {
+  // Login de usuario Inactivo es rechazado con InvalidCredentials
+  it('test_login_usuario_inactivo_rechazado_invalid_credentials', async () => {
     const ctx = createAuthContext();
     ctx.seedUser({ email: 'inactivo@empresa.com', password: 'contraseña-segura', status: 'inactivo' });
 

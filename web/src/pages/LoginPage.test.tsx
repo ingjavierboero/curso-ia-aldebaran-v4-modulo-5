@@ -4,7 +4,8 @@ import { ANA, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('LoginPage', () => {
-  it('LoginPage con credenciales válidas navega a la pantalla principal', async () => {
+  // LoginPage con credenciales válidas navega a la pantalla principal
+  it('test_login_page_credenciales_validas_navega_a_la_pantalla_principal', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       // Antes del login no hay sesión; después, el loader de `/` la encuentra.
@@ -26,7 +27,8 @@ describe('LoginPage', () => {
     expect(new Headers(loginCall?.init?.headers).get('Content-Type')).toBe('application/json');
   });
 
-  it('LoginPage con 401 muestra "Email o contraseña incorrectos" rechazado y limpia la contraseña', async () => {
+  // LoginPage con 401 muestra "Email o contraseña incorrectos" rechazado y limpia la contraseña
+  it('test_login_page_401_muestra_mensaje_y_limpia_la_contrasena', async () => {
     mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       'GET /api/auth/session': SESSION_401,
@@ -44,7 +46,8 @@ describe('LoginPage', () => {
     expect(router.state.location.pathname).toBe('/login');
   });
 
-  it('error de red en el login muestra "No se pudo conectar con el servidor" (error)', async () => {
+  // error de red en el login muestra "No se pudo conectar con el servidor" (error)
+  it('test_login_page_error_de_red_muestra_no_se_pudo_conectar', async () => {
     mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
       'GET /api/auth/session': SESSION_401,
