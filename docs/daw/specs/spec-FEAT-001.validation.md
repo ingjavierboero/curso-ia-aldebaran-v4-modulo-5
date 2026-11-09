@@ -15,10 +15,10 @@
   ✅ F-SPEC-16: every documented error is named by a test
   ✅ F-SPEC-11: dependencies between blocks are declared
   ⚠️ W-SPEC-01: block referencing no FR — enabler or gold-plating?: Block 1 (Scaffolding del monorepo y base de datos)
-  ⚠️ W-SPEC-02: large block, consider splitting: Block 1 (Scaffolding del monorepo y base de datos) (14 files, 478 words), Block 2 (Dominio y casos de uso) (21 files, 815 words), Block 3 (Adaptadores de infraestructura) (8 files, 377 words), Block 4 (API HTTP, middleware de sesión y composition root) (11 files, 969 words), Block 5 (Web: login, registro del primer Admin y ruta protegida) (13 files, 730 words)
+  ⚠️ W-SPEC-02: large block, consider splitting: Block 1 (Scaffolding del monorepo y base de datos) (14 files, 486 words), Block 2 (Dominio y casos de uso) (21 files, 845 words), Block 3 (Adaptadores de infraestructura) (8 files, 389 words), Block 4 (API HTTP, middleware de sesión y composition root) (11 files, 1001 words), Block 5 (Web: login, registro del primer Admin y ruta protegida) (13 files, 748 words)
   👁  F-SPEC-12 (contradicts the PRD) and F-SPEC-13 (terminology diverging from
       the PRD) are MANUAL: judge them and say so explicitly in your report.
-  ✅ F-SPEC-LOOP: 1 loop(s) since a human decided, under the ceiling of 3; 1 in total for this document
+  ✅ F-SPEC-LOOP: 2 loop(s) since a human decided, under the ceiling of 3; 2 in total for this document
 ────────────────────────────────────────────────────────────────
 Total: 13 passed, 0 failed, 2 warnings
 Result: PASSED

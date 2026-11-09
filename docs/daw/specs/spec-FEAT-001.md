@@ -6,8 +6,8 @@
 | PRD | docs/daw/prd/prd-FEAT-001.md |
 | Tier | FEATURE |
 | Date | 2026-11-04 |
-| Spec loops | 1 |
-| Loops since last human decision | 1 |
+| Spec loops | 2 |
+| Loops since last human decision | 2 |
 
 ## Summary
 Monorepo npm workspaces (`server/` y `web/`, ESM, TypeScript strict). El server (Express 5, Drizzle 0.45 + better-sqlite3) sigue DDD: domain (entidades, value objects, puertos), application (casos de uso, `UnitOfWork`, DTO `PublicUser`) e infrastructure (repos Drizzle síncronos, argon2id, generador de tokens, HTTP). La sesión vive en la tabla `sessions` (solo el SHA-256 del token) y viaja en la cookie `aldebaran_sid` httpOnly + SameSite=Strict; vence a las 24 h sin actividad, con reloj inyectable. La web (React 19 + Vite 8 + antd 6 + zustand 5 + react-router 8, data router) ofrece login, registro del primer Admin y una pantalla principal protegida, con estructura por responsabilidad (`api/`, `store/`, `routes/`, `pages/`): DDD aplica solo a `server/` (decisión del usuario, 2026-11-04).
@@ -63,10 +63,10 @@ Rollback del schema: `0000_init.sql` es la migración inicial sobre una base vac
 - Ruta inexistente — 404 JSON `{ error: "No encontrado" }`.
 
 **Required tests**
-- [ ] `migrate crea las tablas users y sessions con sus índices únicos` — base de Block 3
-- [ ] `createDb crea el directorio faltante con permisos 0700 y el archivo con 0600` — mitigación R-08
-- [ ] `createDb con ruta no creable lanza error con la ruta (error)` — sad path
-- [ ] `GET /api/inexistente responde 404 rechazado con JSON y headers de seguridad` — sad path
+- [ ] `test_migrate_crea_tablas_users_y_sessions_con_indices_unicos` — migrate crea las tablas users y sessions con sus índices únicos — base de Block 3
+- [ ] `test_createdb_crea_directorio_0700_y_archivo_0600` — createDb crea el directorio faltante con permisos 0700 y el archivo con 0600 — mitigación R-08
+- [ ] `test_createdb_con_ruta_no_creable_lanza_error_con_la_ruta` — createDb con ruta no creable lanza error con la ruta (error) — sad path
+- [ ] `test_get_api_inexistente_responde_404_json_con_headers_de_seguridad` — GET /api/inexistente responde 404 rechazado con JSON y headers de seguridad — sad path
 
 **Completion criterion**
 `npm test` corre los proyectos `server` y `web` (este último vacío), los cuatro tests pasan y `npm run typecheck` termina sin errores.
@@ -116,21 +116,21 @@ Implementa FR-02 (login con email normalizado, D-01), FR-03 (mismo `InvalidCrede
 - Sesión inexistente, vencida o de usuario Inactivo — `Unauthenticated`; la sesión se borra si existía.
 
 **Required tests**
-- [ ] `Login con email y contraseña correctos de un usuario Activo devuelve token y PublicUser` — validates AC-01
-- [ ] `Login con Admin@Empresa.com encuentra al usuario admin@empresa.com` — validates AC-02
-- [ ] `Login con contraseña incorrecta es rechazado con InvalidCredentials` — validates AC-03 (sad path)
-- [ ] `Login con email inexistente es rechazado con InvalidCredentials y verifica contra el hash dummy` — validates AC-03 (sad path)
-- [ ] `Login de usuario Inactivo es rechazado con InvalidCredentials` — validates AC-03 (sad path)
-- [ ] `Logout borra la sesión y AuthenticateSession posterior es rechazado (no autorizado)` — validates AC-04 (sad path)
-- [ ] `RegisterFirstAdmin con sistema vacío crea un Admin Activo que puede hacer Login` — validates AC-05
-- [ ] `RegisterFirstAdmin con contraseña de 7 caracteres es rechazado con WeakPassword y no crea usuario` — validates AC-06 (sad path)
-- [ ] `RegisterFirstAdmin con email inválido es rechazado con InvalidEmail` — sad path
-- [ ] `RegisterFirstAdmin con nombre faltante es rechazado con InvalidName` — sad path
-- [ ] `RegisterFirstAdmin con un usuario existente es rechazado con FirstAdminAlreadyExists (conflict) sin llamar a hash` — validates AC-07 (sad path)
-- [ ] `AuthenticateSession con última actividad hace 24 h es rechazado (Unauthenticated) y borra la sesión` — validates AC-09 (sad path)
-- [ ] `AuthenticateSession con última actividad hace 23 h devuelve el usuario y actualiza last_activity_at` — validates AC-10
-- [ ] `AuthenticateSession con token inexistente es rechazado (no autorizado)` — sad path
-- [ ] `PublicUser no tiene la propiedad passwordHash` — validates AC-11
+- [ ] `test_login_credenciales_correctas_usuario_activo_devuelve_token_y_public_user` — Login con email y contraseña correctos de un usuario Activo devuelve token y PublicUser — validates AC-01
+- [ ] `test_login_con_email_en_mayusculas_encuentra_al_usuario` — Login con Admin@Empresa.com encuentra al usuario admin@empresa.com — validates AC-02
+- [ ] `test_login_contrasena_incorrecta_rechazado_invalid_credentials` — Login con contraseña incorrecta es rechazado con InvalidCredentials — validates AC-03 (sad path)
+- [ ] `test_login_email_inexistente_rechazado_y_verifica_contra_hash_dummy` — Login con email inexistente es rechazado con InvalidCredentials y verifica contra el hash dummy — validates AC-03 (sad path)
+- [ ] `test_login_usuario_inactivo_rechazado_invalid_credentials` — Login de usuario Inactivo es rechazado con InvalidCredentials — validates AC-03 (sad path)
+- [ ] `test_logout_borra_la_sesion_y_authenticate_session_posterior_es_rechazado` — Logout borra la sesión y AuthenticateSession posterior es rechazado (no autorizado) — validates AC-04 (sad path)
+- [ ] `test_register_first_admin_sistema_vacio_crea_admin_activo_que_hace_login` — RegisterFirstAdmin con sistema vacío crea un Admin Activo que puede hacer Login — validates AC-05
+- [ ] `test_register_first_admin_contrasena_de_7_rechazado_weak_password_sin_crear_usuario` — RegisterFirstAdmin con contraseña de 7 caracteres es rechazado con WeakPassword y no crea usuario — validates AC-06 (sad path)
+- [ ] `test_register_first_admin_email_invalido_rechazado_invalid_email` — RegisterFirstAdmin con email inválido es rechazado con InvalidEmail — sad path
+- [ ] `test_register_first_admin_nombre_faltante_rechazado_invalid_name` — RegisterFirstAdmin con nombre faltante es rechazado con InvalidName — sad path
+- [ ] `test_register_first_admin_con_usuario_existente_rechazado_conflict_sin_hash` — RegisterFirstAdmin con un usuario existente es rechazado con FirstAdminAlreadyExists (conflict) sin llamar a hash — validates AC-07 (sad path)
+- [ ] `test_authenticate_session_24h_sin_actividad_rechazado_y_borra_la_sesion` — AuthenticateSession con última actividad hace 24 h es rechazado (Unauthenticated) y borra la sesión — validates AC-09 (sad path)
+- [ ] `test_authenticate_session_23h_devuelve_usuario_y_actualiza_last_activity_at` — AuthenticateSession con última actividad hace 23 h devuelve el usuario y actualiza last_activity_at — validates AC-10
+- [ ] `test_authenticate_session_token_inexistente_rechazado` — AuthenticateSession con token inexistente es rechazado (no autorizado) — sad path
+- [ ] `test_public_user_no_tiene_password_hash` — PublicUser no tiene la propiedad passwordHash — validates AC-11
 
 **Completion criterion**
 Los 15 tests pasan con los dobles en memoria y `FakeClock`, sin base ni HTTP, y ningún archivo de `domain/` o `application/` importa de `infrastructure/`.
@@ -164,12 +164,12 @@ Implementa sobre SQLite los puertos de Block 2. Cubre NFR-01 (argon2id real) y l
 - Hash con formato inválido en `verify` — devuelve `false` (no lanza); el login termina en `InvalidCredentials`.
 
 **Required tests**
-- [ ] `Argon2PasswordHasher con parámetros de producción guarda un hash $argon2id$ sin la contraseña en texto plano` — validates AC-12
-- [ ] `DrizzleUserRepository inserta y encuentra por email normalizado` — validates AC-02
-- [ ] `DrizzleUserRepository con email duplicado es rechazado como FirstAdminAlreadyExists` — sad path
-- [ ] `Argon2PasswordHasher.verify con hash inválido devuelve false (error controlado)` — sad path
-- [ ] `DrizzleUnitOfWork revierte la transacción si fn lanza` — base de AC-07
-- [ ] `DrizzleSessionRepository touch actualiza last_activity_at y delete la elimina` — base de AC-04 y AC-10
+- [ ] `test_argon2_parametros_de_produccion_guarda_hash_argon2id_sin_contrasena` — Argon2PasswordHasher con parámetros de producción guarda un hash $argon2id$ sin la contraseña en texto plano — validates AC-12
+- [ ] `test_drizzle_user_repository_inserta_y_encuentra_por_email_normalizado` — DrizzleUserRepository inserta y encuentra por email normalizado — validates AC-02
+- [ ] `test_drizzle_user_repository_email_duplicado_rechazado_first_admin_already_exists` — DrizzleUserRepository con email duplicado es rechazado como FirstAdminAlreadyExists — sad path
+- [ ] `test_argon2_verify_con_hash_invalido_devuelve_false` — Argon2PasswordHasher.verify con hash inválido devuelve false (error controlado) — sad path
+- [ ] `test_drizzle_unit_of_work_revierte_la_transaccion_si_fn_lanza` — DrizzleUnitOfWork revierte la transacción si fn lanza — base de AC-07
+- [ ] `test_drizzle_session_repository_touch_actualiza_y_delete_elimina` — DrizzleSessionRepository touch actualiza last_activity_at y delete la elimina — base de AC-04 y AC-10
 
 **Completion criterion**
 Los 6 tests pasan contra una base SQLite temporal migrada y el hash leído de `users.password_hash` empieza con `$argon2id$v=19$m=19456,t=2,p=1$`.
@@ -220,22 +220,22 @@ Expone FR-01 (todo `/api` protegido salvo las tres rutas públicas), FR-02/FR-03
 - Error inesperado — 500 `{ error: "Error interno" }` sin stack; detalle solo en el log.
 
 **Required tests**
-- [ ] `POST /api/auth/login con credenciales válidas responde 200, PublicUser y cookie httpOnly SameSite=Strict` — validates AC-01
-- [ ] `POST /api/auth/login con email en mayúsculas inicia sesión` — validates AC-02
-- [ ] `POST /api/auth/login con contraseña incorrecta, email inexistente o usuario Inactivo es rechazado con 401 y el mismo mensaje` — validates AC-03 (sad path)
-- [ ] `POST /api/auth/login con campo faltante es rechazado con 400` — sad path
-- [ ] `POST /api/auth/login sin Content-Type JSON es rechazado con 415` — sad path
-- [ ] `POST /api/auth/logout y luego GET /api/auth/session con la misma cookie es rechazado con 401` — validates AC-04 (sad path)
-- [ ] `GET /api/setup/status sin usuarios devuelve needsFirstAdmin true y POST /api/setup/first-admin con 8 caracteres crea Admin Activo que hace login` — validates AC-05
-- [ ] `POST /api/setup/first-admin con contraseña de 7 caracteres es rechazado con 400 y no crea usuario` — validates AC-06 (sad path)
-- [ ] `POST /api/setup/first-admin con usuario existente es rechazado con 409 (conflict)` — validates AC-07 (sad path)
-- [ ] `Dos POST /api/setup/first-admin simultáneos: un 201, un 409 duplicado rechazado y un solo usuario` — validates AC-07 (sad path, R-04)
-- [ ] `GET /api/auth/session sin cookie es rechazado con 401 sin datos` — validates AC-08 (sad path)
-- [ ] `GET /api/auth/session con FakeClock 24 h después de la última actividad es rechazado con 401` — validates AC-09 (sad path)
-- [ ] `GET /api/auth/session con FakeClock 23 h después responde 200` — validates AC-10
-- [ ] `Ninguna respuesta de login, first-admin ni session contiene passwordHash ni password_hash` — validates AC-11
-- [ ] `Error inesperado en un caso de uso responde 500 sin stack (error)` — sad path
-- [ ] `authLog registra el intento de login sin la contraseña` — mitigación R-05
+- [ ] `test_post_login_credenciales_validas_200_public_user_y_cookie_segura` — POST /api/auth/login con credenciales válidas responde 200, PublicUser y cookie httpOnly SameSite=Strict — validates AC-01
+- [ ] `test_post_login_email_en_mayusculas_inicia_sesion` — POST /api/auth/login con email en mayúsculas inicia sesión — validates AC-02
+- [ ] `test_post_login_credenciales_invalidas_401_con_el_mismo_mensaje` — POST /api/auth/login con contraseña incorrecta, email inexistente o usuario Inactivo es rechazado con 401 y el mismo mensaje — validates AC-03 (sad path)
+- [ ] `test_post_login_campo_faltante_rechazado_400` — POST /api/auth/login con campo faltante es rechazado con 400 — sad path
+- [ ] `test_post_login_sin_content_type_json_rechazado_415` — POST /api/auth/login sin Content-Type JSON es rechazado con 415 — sad path
+- [ ] `test_post_logout_y_get_session_con_la_misma_cookie_rechazado_401` — POST /api/auth/logout y luego GET /api/auth/session con la misma cookie es rechazado con 401 — validates AC-04 (sad path)
+- [ ] `test_setup_status_sin_usuarios_y_first_admin_con_8_caracteres_crea_admin_que_hace_login` — GET /api/setup/status sin usuarios devuelve needsFirstAdmin true y POST /api/setup/first-admin con 8 caracteres crea Admin Activo que hace login — validates AC-05
+- [ ] `test_post_first_admin_contrasena_de_7_rechazado_400_sin_crear_usuario` — POST /api/setup/first-admin con contraseña de 7 caracteres es rechazado con 400 y no crea usuario — validates AC-06 (sad path)
+- [ ] `test_post_first_admin_con_usuario_existente_rechazado_409` — POST /api/setup/first-admin con usuario existente es rechazado con 409 (conflict) — validates AC-07 (sad path)
+- [ ] `test_dos_post_first_admin_simultaneos_un_201_un_409_y_un_solo_usuario` — Dos POST /api/setup/first-admin simultáneos: un 201, un 409 duplicado rechazado y un solo usuario — validates AC-07 (sad path, R-04)
+- [ ] `test_get_session_sin_cookie_rechazado_401_sin_datos` — GET /api/auth/session sin cookie es rechazado con 401 sin datos — validates AC-08 (sad path)
+- [ ] `test_get_session_24h_despues_de_la_ultima_actividad_rechazado_401` — GET /api/auth/session con FakeClock 24 h después de la última actividad es rechazado con 401 — validates AC-09 (sad path)
+- [ ] `test_get_session_23h_despues_responde_200` — GET /api/auth/session con FakeClock 23 h después responde 200 — validates AC-10
+- [ ] `test_ninguna_respuesta_contiene_password_hash` — Ninguna respuesta de login, first-admin ni session contiene passwordHash ni password_hash — validates AC-11
+- [ ] `test_error_inesperado_en_caso_de_uso_responde_500_sin_stack` — Error inesperado en un caso de uso responde 500 sin stack (error) — sad path
+- [ ] `test_auth_log_registra_el_intento_de_login_sin_la_contrasena` — authLog registra el intento de login sin la contraseña — mitigación R-05
 
 **Completion criterion**
 Los 16 tests de supertest pasan contra `testApp`, y `npm run dev -w server` arranca, aplica la migración sobre `data/aldebaran.db` y responde 401 a `GET /api/auth/session` sin cookie.
@@ -279,15 +279,15 @@ La UI de FR-01 (sin sesión no se ve `/`), FR-02/FR-03 (login y mensaje genéric
 - Error de red o 5xx — se muestra "No se pudo conectar con el servidor"; el formulario queda habilitado.
 
 **Required tests**
-- [ ] `LoginPage con credenciales válidas navega a la pantalla principal` — validates AC-01
-- [ ] `LoginPage con 401 muestra "Email o contraseña incorrectos" rechazado y limpia la contraseña` — validates AC-03 (sad path)
-- [ ] `HomePage al cerrar sesión navega a /login` — validates AC-04
-- [ ] `/login con needsFirstAdmin true redirige a /setup y FirstAdminPage crea el Admin y navega a /login` — validates AC-05
-- [ ] `FirstAdminPage con contraseña de 7 caracteres es rechazado en el formulario` — validates AC-06 (sad path)
-- [ ] `/setup con usuarios existentes redirige a /login y un 409 duplicado rechazado navega a /login` — validates AC-07 (sad path)
-- [ ] `/ sin sesión es rechazado y redirige a /login` — validates AC-08 (sad path)
-- [ ] `401 en getSession desde la pantalla principal (sesión vencida) es rechazado y lleva a /login` — validates AC-09 (sad path)
-- [ ] `error de red en el login muestra "No se pudo conectar con el servidor" (error)` — sad path
+- [ ] `test_login_page_credenciales_validas_navega_a_la_pantalla_principal` — LoginPage con credenciales válidas navega a la pantalla principal — validates AC-01
+- [ ] `test_login_page_401_muestra_mensaje_y_limpia_la_contrasena` — LoginPage con 401 muestra "Email o contraseña incorrectos" rechazado y limpia la contraseña — validates AC-03 (sad path)
+- [ ] `test_home_page_cerrar_sesion_navega_a_login` — HomePage al cerrar sesión navega a /login — validates AC-04
+- [ ] `test_login_con_needs_first_admin_redirige_a_setup_y_crea_admin` — /login con needsFirstAdmin true redirige a /setup y FirstAdminPage crea el Admin y navega a /login — validates AC-05
+- [ ] `test_first_admin_page_contrasena_de_7_rechazado_en_el_formulario` — FirstAdminPage con contraseña de 7 caracteres es rechazado en el formulario — validates AC-06 (sad path)
+- [ ] `test_setup_con_usuarios_existentes_redirige_a_login_y_409_navega_a_login` — /setup con usuarios existentes redirige a /login y un 409 duplicado rechazado navega a /login — validates AC-07 (sad path)
+- [ ] `test_home_sin_sesion_redirige_a_login` — / sin sesión es rechazado y redirige a /login — validates AC-08 (sad path)
+- [ ] `test_get_session_401_desde_home_sesion_vencida_lleva_a_login` — 401 en getSession desde la pantalla principal (sesión vencida) es rechazado y lleva a /login — validates AC-09 (sad path)
+- [ ] `test_login_page_error_de_red_muestra_no_se_pudo_conectar` — error de red en el login muestra "No se pudo conectar con el servidor" (error) — sad path
 
 **Completion criterion**
 Los 9 tests pasan con `fetch` simulado, `npm run build -w web` compila sin errores, y con `npm run dev` se puede registrar el primer Admin, iniciar sesión y cerrarla desde el navegador.
