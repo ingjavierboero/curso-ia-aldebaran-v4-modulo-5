@@ -12,3 +12,16 @@
 .daw-journal.jsonl
 .daw/**/__pycache__/
 # END DAW
+
+# Dependencias y build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Bases SQLite locales (incluye -wal y -shm)
+data/*.db*
+
+# Secretos
+.env
+.env.*
+!.env.example
