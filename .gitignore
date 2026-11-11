@@ -1,3 +1,17 @@
+
+# Dependencias y build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Bases SQLite locales (incluye -wal y -shm)
+data/*.db*
+
+# Secretos
+.env
+.env.*
+!.env.example
+
 # BEGIN DAW — pipeline runtime, NOT committed (managed by DAW)
 #   .daw-state.json  = which phase you are in; yours, not the repo's
 #   .daw-paused/     = paused tickets
@@ -13,15 +27,5 @@
 .daw/**/__pycache__/
 # END DAW
 
-# Dependencias y build
-node_modules/
-dist/
-*.tsbuildinfo
-
-# Bases SQLite locales (incluye -wal y -shm)
-data/*.db*
-
-# Secretos
-.env
-.env.*
-!.env.example
+# Salida de los tests
+coverage/

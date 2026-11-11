@@ -1,6 +1,6 @@
 ---
 applyTo: '**'
-version: 1.16.0
+version: 1.18.0
 ---
 
 # Validation Rules — Central Catalog
@@ -78,7 +78,7 @@ Valuable, Estimable, Small, Testable), EARS (Easy Approach to Requirements Synta
 | F-PRD-02 | Non-binary AC | Every acceptance criterion must be evaluable as PASS or FAIL without ambiguity. It must follow the pattern: "Given [context], when [action], then [measurable result]". If an AC says "works correctly", "behaves appropriately" or uses any unmeasurable adjective → FAIL. | BDD: acceptance criteria are verifiable contracts. An ambiguous AC produces divergent implementations. |
 | F-PRD-03 | NFR with no metric | Every non-functional requirement (NFR-xx) must include a quantitative value. Valid examples: "< 500ms p95", "99.9% uptime", "≥ 80% coverage". Invalid examples: "fast", "secure", "scalable", "highly available". | IEEE 830 §3.4: NFRs must be measurable. "Fast" is not a requirement, it is a wish. Without a number there is no possible acceptance criterion. |
 | F-PRD-04 | Empty "Out of Scope" | For tier FEATURE: the "Out of Scope" section must exist and contain at least one explicit item. If the section is missing or empty → FAIL. | The #1 cause of scope creep is not defining what is NOT included. Whatever is not explicitly excluded is assumed to be included. |
-| F-PRD-05 | Non-unique IDs | Every FR, NFR and AC must have a unique identifier (FR-01, NFR-01, AC-01). If there are duplicate or missing IDs → FAIL. | Without unique IDs there is no traceability. You cannot link PRD → spec → test → code. |
+| F-PRD-05 | Non-unique IDs | Every FR, NFR and AC must have a unique identifier (FR-01, NFR-01, AC-01). If there are duplicate or missing IDs → FAIL. A **split child** (`prd-{TICKET}{letter}.md` with a sibling `prd-{TICKET}.md` that has `\| Status \| Split \|` and a row for it) keeps the global AC ids its index assigns (F-PRD-11), so its ACs are checked against exactly that row instead of from AC-01: an assigned AC absent, or an AC the row does not assign → FAIL, naming it. Its FR and NFR still count from 01. | Without unique IDs there is no traceability. You cannot link PRD → spec → test → code. |
 | F-PRD-06 | Ambiguous verb | Requirements must use defined imperative verbs: "must", "must not". If a requirement uses "should", "could", "may", "ideally", "it is recommended" → FAIL. | IEEE 830 §3.1: "shall" for mandatory; "should" is forbidden in requirements because it creates contractual ambiguity. A requirement that "should" be met is a requirement that can be ignored. |
 | F-PRD-07 | Undeclared dependencies | If an FR references another module, an external service, or an existing feature, that dependency must be listed in the "Dependencies" section. If there are undeclared cross-references → FAIL. | Undeclared dependencies cause implementation blockers and integration errors. |
 | F-PRD-08 | Missing structural section | The PRD must contain ALL of these sections: Context and Problem, Goals, Functional Requirements, Non-Functional Requirements, Acceptance Criteria, Out of Scope (FEATURE), Dependencies. If any is missing → FAIL. | A structurally incomplete PRD cannot be validated. Missing sections are requirements nobody thought about. |
@@ -176,7 +176,19 @@ completeness principle (every design decision must be documented).
 | F-SPEC-14 | Fix with no regression test | Every fix-plan must include at least one test reproducing the original bug. If there is no regression test → FAIL. | A fix with no regression test will break again. The test must fail BEFORE the fix and pass AFTER. Standard practice in every engineering team. |
 | F-SPEC-15 | Fix-plan with no rollback plan | For tier FIX: the fix-plan must include rollback steps and the indicators for when to apply them. If reverting really is trivial, the section still has to exist and say so explicitly. Absent → FAIL. | A fix that reaches production with no thought about reverting it can end up worse than the defect. Standard in incident management (ITIL, Google SRE). If a change is too small to deserve a rollback plan, it is a QUICK-FIX, not a FIX. |
 
-### 2.6 Spec warnings
+### 2.6 The OpenSpec bridge (only under `spec-format: openspec`)
+
+Run only when the project's `.daw/config.yml` says `spec-format: openspec` (`/daw-init`). A project
+without the file, or with `spec-format: daw`, never sees them. Like `F-SPEC-LOOP`, they sit outside
+the numbered rules and the summary below. They hold every FEATURE spec; a FIX fix-plan answers to
+an RCA, not to a change, and is held to them only when it names a change itself.
+
+| ID | Check | Precise description | Basis |
+|---|---|---|---|
+| F-SPEC-OS-01 | One OpenSpec change, named and present | The spec carries exactly one line `**OpenSpec change:** openspec/changes/<name>`, `<name>` matches `^[a-z0-9][a-z0-9-]*$`, and the folder exists in this repository with its `proposal.md`. None, two, a bad name, a missing folder, a symlink anywhere in the change (inside the repository or out), a non-UTF-8 file or a folder past the seal's caps → FAIL. | The receipt seals the spec AND the change it names (`daw_receipt.sealed_text`), so an approval covers both. A spec that names no change, or two, has nothing definite to seal; a name that is a path (`../../x`) never reaches the filesystem. |
+| F-SPEC-OS-02 | The spec does not copy the what | The spec has no `### Requirement:` or `#### Scenario:` heading, and no line of 40 or more characters (whitespace-normalised) that is a line of the change's `openspec/changes/<name>/proposal.md` or `openspec/changes/<name>/specs/**`. Otherwise → FAIL. | The what lives in the change and the how in the spec. Two copies of a requirement drift, and the one the code follows is whichever the reader opened. |
+
+### 2.7 Spec warnings
 
 | ID | Check | Precise description | Basis |
 |---|---|---|---|
@@ -305,12 +317,12 @@ To suppress a Medium finding as a false positive or an accepted risk:
 
 | ID | Check | Precise description | Basis |
 |---|---|---|---|
-| F-VER-01 | AC with no passing test | **Every AC in the PRD must have at least one test validating it, and that test must be passing.** If an AC has no test, or the test exists but fails → FAIL. | The AC is the contract with the user. Without a test validating it, there is no evidence it works. |
-| F-VER-02 | Spec task not implemented | **Every task/block in the spec, or step in the fix-plan, must be implemented.** If a whole block or a fix-plan step has no corresponding code → FAIL. | The spec is the approved plan. Partial implementation = an incomplete feature = a bug. |
+| F-VER-01 | AC with no passing test | **Every AC in the PRD must have at least one test validating it, and that test must be passing.** If an AC has no test, or the test exists but fails → FAIL. **On FIX** with no PRD passed or found for the ticket, there is no AC to check: the row passes and says that the fix-plan's steps and tests are the contract (F-VER-02 and F-VER-06 hold the report to them). A PRD that exists is checked as for any tier. | The AC is the contract with the user. Without a test validating it, there is no evidence it works. |
+| F-VER-02 | Spec task not implemented | **Every task/block in the spec, or step in the fix-plan, must be implemented.** If a whole block or a fix-plan step has no corresponding code → FAIL. **On FIX** the steps are the numbered items under the fix-plan's `## Solution — steps`, and the report names each as `Step N`; a step it does not name, or names on a failing line (`❌`, `fail`), is a FAIL that names it. A fix-plan with no numbered step is a FAIL, never "all 0". | The spec is the approved plan. Partial implementation = an incomplete feature = a bug. |
 | F-VER-03 | Test coverage below the floor | **Line, branch and function coverage must each be at or above the project's floor**, read from `AGENTS.md` §Testing. Where the project states none, `.daw/rules/testing.instructions.md` supplies 80/80/80 as the default. If any is below → FAIL. | The floor belongs to the project, which is what F-TEST-05 says in the same catalog: a report that chooses its own floor passes itself, and a rule that hardcodes one calls a project with a 70% floor both PASS and FAIL depending on which of the two rules you read. Verify the numbers are met, not just that "there are tests". |
 | F-VER-04 | No sad-path tests | **Every endpoint or function accepting input must have at least one test with invalid input.** If there are only happy-path tests → FAIL. | The worst bugs live in edge cases and sad paths. Testing only the happy path tests only 20% of the real behavior. |
 | F-VER-05 | Lint/type checker fails | If the project has a linter or type checker configured and there are errors → FAIL. | Lint/type errors indicate code that can fail at runtime. You cannot verify code that does not compile or pass lint. |
-| F-VER-06 | Spec tests not implemented | **Every test listed in the spec must exist and pass.** If the spec says "test: creating a product with an empty name returns 400" and that test does not exist → FAIL. The names are read **only from the spec's `Required tests`**, and only names: a path is not a test. Reading the whole document counted `tests/fakes.py` — which holds no test — among the promises, and round 6 watched the FAIL be closed by adding the file names to the report, which is what the rule had misread. | The spec's tests are quality commitments the user approved. Not implementing them is breaching the spec. |
+| F-VER-06 | Spec tests not implemented | **Every test listed in the spec must exist and pass.** If the spec says "test: creating a product with an empty name returns 400" and that test does not exist → FAIL. The names are read **only from the spec's `Required tests`**, and only names: a path is not a test. Reading the whole document counted `tests/fakes.py` — which holds no test — among the promises, and round 6 watched the FAIL be closed by adding the file names to the report, which is what the rule had misread. **On FIX** the tests are the bullets under the fix-plan's `## Tests`: one that opens with a `test_x` name is held to that name, and one that is only a description is held to its position, `Test N` (`Test 1` is the regression test the template lists first), not on a failing line. A sentence has no stable name, and matching its words would break on any rewording. A missing or failing test is a FAIL that names it. | The spec's tests are quality commitments the user approved. Not implementing them is breaching the spec. |
 
 ### WARNING rules
 
