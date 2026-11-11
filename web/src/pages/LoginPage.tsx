@@ -35,7 +35,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthCard title="Iniciar sesión">
+    <AuthCard title="Iniciar sesión en Aldebaran">
       <Stack orientation="vertical" size="middle">
         {notice && <Alert type={notice.type} title={notice.text} showIcon />}
         {error && <Alert type="error" title={error} showIcon />}
