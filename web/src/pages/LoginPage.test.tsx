@@ -151,4 +151,10 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Ingresar/ })).toBeEnabled());
     expect(screen.getByLabelText('Contraseña')).toBeEnabled();
   });
+
+  it('test_login_titulo_nombra_aldebaran', async () => {
+    mockFetch({ 'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } }, 'GET /api/auth/session': SESSION_401 });
+    renderApp('/login');
+    expect(await screen.findByRole('heading', { name: 'Iniciar sesión en Aldebaran' })).toBeInTheDocument();
+  });
 });
