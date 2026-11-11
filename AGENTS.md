@@ -13,6 +13,9 @@ se las envía por email y valida con un LLM los comprobantes de pago que respond
 - ARCA: WSAA/WSFEv1 implementados a mano (SOAP), solo homologación.
 - Jobs: node-cron dentro del server, TZ `America/Argentina/Buenos_Aires`.
 - Tests: Vitest.
+- Install: npm ci
+- Test: npm test
+- Typecheck: npm run typecheck
 
 ## Architecture conventions
 Se usa arquitectura DDD con domain, infrastructure, application
