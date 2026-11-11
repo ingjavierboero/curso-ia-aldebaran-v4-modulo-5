@@ -11,3 +11,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - [FEAT-001] API protegida por defecto (deny-by-default) y log estructurado de cada intento de autenticación.
 - [FEAT-001] Web con pantallas de login y de registro del primer Admin, y pantalla principal protegida.
 - [FEAT-001] Scaffolding del monorepo (`server/` y `web/`) y base SQLite con migraciones de Drizzle.
+
+### Changed
+- [FIX-001] La pantalla de login se titula "Iniciar sesión en Aldebaran".
