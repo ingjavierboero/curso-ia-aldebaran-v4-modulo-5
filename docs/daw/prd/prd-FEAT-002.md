@@ -5,8 +5,8 @@
 | Ticket | FEAT-002 |
 | Tracker | none |
 | Date | 2026-11-11 |
-| PRD loops | 1 |
-| Loops since last human decision | 1 |
+| PRD loops | 2 |
+| Loops since last human decision | 0 |
 
 ## Context and Problem
 
@@ -77,6 +77,10 @@ de tipos o código que un linter hubiera marcado, y nadie se entera hasta despu�
 - Conjunto de reglas: el estricto que usa información de tipos (no el recomendado sin tipos).
 - El chequeo de tipos se suma como paso de la verificación, además de instalación, lint y tests.
 
+### Decisiones (usuario, 2026-11-11, vuelta desde PLAN)
+
+- ESLint con `typescript-eslint` se descarta: no soporta TypeScript 7 (acepta `>=4.8.4 <6.1.0`), que es el que usa el repo. El linter pasa a ser oxlint en modo con tipos (opción B). Se mantienen las decisiones anteriores: bloquea desde el día uno y usa la información de tipos.
+
 ## Out of Scope
 
 - Configurar la protección de la rama `main` en GitHub (que el check sea obligatorio para mergear): es una configuración del repositorio en GitHub, no del código.
@@ -95,6 +99,6 @@ de tipos o código que un linter hubiera marcado, y nadie se entera hasta despu�
 
 ## Dependencies
 
-- Herramientas elegidas por el usuario, a detallar en el spec: GitHub Actions para la verificación, ESLint con `typescript-eslint` (`strict-type-checked`) como linter.
+- Herramientas elegidas por el usuario, a detallar en el spec: GitHub Actions para la verificación, oxlint en modo con tipos (`oxlint-tsgolint`, sobre TypeScript 7 nativo) como linter.
 - Los scripts existentes del repositorio: `npm ci`, `npm run typecheck` y `npm test` (declarados en `AGENTS.md` → Stack).
 - El modo mock descripto en `AGENTS.md` (`MOCK_MODE=true`).
