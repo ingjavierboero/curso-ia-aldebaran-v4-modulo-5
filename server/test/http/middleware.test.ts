@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/infrastructure/http/app.js';
+import { responseBody } from '../support/responseBody.js';
 import { type TestApp, createTestApp, sessionCookieFrom } from '../support/testApp.js';
 
 const HOUR = 60 * 60 * 1000;
@@ -44,7 +45,7 @@ describe('authMiddleware', () => {
     expect(res.body).toEqual({ error: 'Sesión no válida' });
     expect(clearedCookie(res.headers['set-cookie'])).toMatch(/^aldebaran_sid=;/);
     const rejected = t.logs.find((l) => l.record.event === 'session_rejected');
-    expect(rejected?.record).toMatchObject({ path: '/api/auth/session', ip: expect.any(String) });
+    expect(rejected?.record).toMatchObject({ path: '/api/auth/session', ip: expect.any(String) as unknown });
     expect(JSON.stringify(t.logs)).not.toContain('inventado');
   });
 
@@ -67,7 +68,7 @@ describe('authMiddleware', () => {
     t.clock.advance(23 * HOUR);
     const first = await request(t.app).get('/api/auth/session').set('Cookie', cookie);
     expect(first.status).toBe(200);
-    expect(first.body.user.email).toBe('admin@empresa.com');
+    expect(responseBody(first.body, { user: { email: 'string' } }).user.email).toBe('admin@empresa.com');
 
     // vencimiento deslizante: la actividad a las 23 h renueva la ventana
     t.clock.advance(23 * HOUR);
@@ -90,9 +91,9 @@ describe('authMiddleware', () => {
   it('deny-by-default: variantes de rutas públicas (mayúsculas, barra final, HEAD) sin sesión son rechazadas con 401 sin ejecutar casos de uso', async () => {
     const calls: string[] = [];
     const spy = (name: string) => ({
-      execute: async () => {
+      execute: () => {
         calls.push(name);
-        throw new Error('no debería ejecutarse');
+        return Promise.reject(new Error('no debería ejecutarse'));
       },
     });
     t.cleanup();

@@ -67,7 +67,7 @@ describe('DrizzleSessionRepository', () => {
     expect(repo.findByTokenHash('a'.repeat(64))).toBeNull();
     expect(t.db.$client.prepare('SELECT COUNT(*) AS n FROM sessions').get()).toEqual({ n: 0 });
     // borrar algo inexistente no lanza
-    expect(() => repo.delete('s-1')).not.toThrow();
+    expect(() => { repo.delete('s-1'); }).not.toThrow();
   });
 
   it('findByTokenHash lanza si last_activity_at o created_at no es un ISO 8601 válido (no hidrata Invalid Date)', () => {
@@ -86,7 +86,7 @@ describe('DrizzleSessionRepository', () => {
     repo.insert(makeSession('s-1', 'b'.repeat(64)));
 
     expect(repo.findByTokenHash('c'.repeat(64))).toBeNull();
-    expect(() => repo.insert(makeSession('s-2', 'b'.repeat(64)))).toThrow();
+    expect(() => { repo.insert(makeSession('s-2', 'b'.repeat(64))); }).toThrow();
     expect(t.db.$client.prepare('SELECT COUNT(*) AS n FROM sessions').get()).toEqual({ n: 1 });
   });
 });

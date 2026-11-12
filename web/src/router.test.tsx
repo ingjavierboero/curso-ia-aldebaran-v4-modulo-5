@@ -13,7 +13,7 @@ describe('router', () => {
     });
     const { router } = renderApp('/');
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('anon');

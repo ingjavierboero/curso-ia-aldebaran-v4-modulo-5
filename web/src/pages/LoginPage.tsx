@@ -39,7 +39,16 @@ export function LoginPage() {
       <Stack orientation="vertical" size="middle">
         {notice && <Alert type={notice.type} title={notice.text} showIcon />}
         {error && <Alert type="error" title={error} showIcon />}
-        <Form form={form} name="login" layout="vertical" onFinish={onFinish} disabled={submitting} requiredMark={false}>
+        <Form
+          form={form}
+          name="login"
+          layout="vertical"
+          onFinish={(values) => {
+            void onFinish(values);
+          }}
+          disabled={submitting}
+          requiredMark={false}
+        >
           <Form.Item
             label="Email"
             name="email"

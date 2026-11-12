@@ -18,6 +18,6 @@ describe('Logout', () => {
     expect(ctx.sessions.all()).toHaveLength(0);
     expect(() => ctx.authenticateSession.execute(token)).toThrow(Unauthenticated);
     // Idempotente: repetir el logout con el mismo token no falla.
-    expect(() => ctx.logout.execute(token)).not.toThrow();
+    expect(() => { ctx.logout.execute(token); }).not.toThrow();
   });
 });

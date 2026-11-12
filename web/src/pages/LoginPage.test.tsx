@@ -18,7 +18,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'secreta123');
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/'); });
     expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
 
     const [loginCall] = fetchMock.callsTo('POST', '/api/auth/login');
@@ -60,7 +60,9 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     expect(await screen.findByText('No se pudo conectar con el servidor')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+    });
     expect(router.state.location.pathname).toBe('/login');
   });
 
@@ -82,11 +84,13 @@ describe('LoginPage', () => {
       await user.type(screen.getByLabelText('Contraseña'), 'secreta123');
       await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
-      await waitFor(() => expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(3));
-      await waitFor(() => expect(router.state.navigation.state).toBe('idle'));
+      await waitFor(() => { expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(3); });
+      await waitFor(() => { expect(router.state.navigation.state).toBe('idle'); });
       expect(router.state.location.pathname).toBe('/login');
       // `/Ingresar/`: en jsdom la animación de salida del ícono de carga no termina y deja "loading" en el nombre.
-      await waitFor(() => expect(screen.getByRole('button', { name: /Ingresar/ })).toBeEnabled());
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Ingresar/ })).toBeEnabled();
+      });
       expect(screen.getByLabelText('Email')).toBeEnabled();
       expect(screen.getByLabelText('Contraseña')).toBeEnabled();
     },
@@ -106,7 +110,9 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('No se pudo conectar con el servidor')).toBeInTheDocument();
     expect(screen.queryByText('Error interno')).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+    });
     expect(router.state.location.pathname).toBe('/login');
   });
 
@@ -123,7 +129,9 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     expect(await screen.findByText('Content-Type debe ser application/json')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+    });
     expect(router.state.location.pathname).toBe('/login');
   });
 
@@ -148,7 +156,9 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('Email o contraseña incorrectos')).toBeInTheDocument();
     // `/Ingresar/`: en jsdom la animación de salida del ícono de carga no termina y deja "loading" en el nombre.
-    await waitFor(() => expect(screen.getByRole('button', { name: /Ingresar/ })).toBeEnabled());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Ingresar/ })).toBeEnabled();
+    });
     expect(screen.getByLabelText('Contraseña')).toBeEnabled();
   });
 

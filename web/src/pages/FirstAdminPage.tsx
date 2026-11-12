@@ -44,7 +44,15 @@ export function FirstAdminPage() {
           Todavía no hay usuarios. Creá el Admin que va a gestionar el sistema.
         </Typography.Paragraph>
         {error && <Alert type="error" title={error} showIcon />}
-        <Form<FirstAdminInput> name="first-admin" layout="vertical" onFinish={onFinish} disabled={submitting} requiredMark={false}>
+        <Form<FirstAdminInput>
+          name="first-admin"
+          layout="vertical"
+          onFinish={(values) => {
+            void onFinish(values);
+          }}
+          disabled={submitting}
+          requiredMark={false}
+        >
           <Form.Item
             label="Nombre"
             name="name"

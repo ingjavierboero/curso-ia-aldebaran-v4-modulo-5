@@ -13,10 +13,16 @@ export interface Logger {
 
 /** Una línea JSON por registro, con `level`. Por defecto escribe en stdout. */
 export function createJsonLogger(write: (line: string) => void = (line) => process.stdout.write(line)): Logger {
-  const emit = (level: 'info' | 'error', record: LogRecord) => write(`${JSON.stringify({ level, ...record })}\n`);
+  const emit = (level: 'info' | 'error', record: LogRecord): void => {
+    write(`${JSON.stringify({ level, ...record })}\n`);
+  };
   return {
-    info: (record) => emit('info', record),
-    error: (record) => emit('error', record),
+    info: (record) => {
+      emit('info', record);
+    },
+    error: (record) => {
+      emit('error', record);
+    },
   };
 }
 
