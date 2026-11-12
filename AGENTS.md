@@ -16,6 +16,7 @@ se las envía por email y valida con un LLM los comprobantes de pago que respond
 - Install: npm ci
 - Test: npm test
 - Typecheck: npm run typecheck
+- Lint: npm run lint
 
 ## Architecture conventions
 Se usa arquitectura DDD con domain, infrastructure, application
