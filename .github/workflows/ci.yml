@@ -1,0 +1,44 @@
+name: CI
+
+# Solo pull_request: corre con el código del PR y sin acceso a secretos (R-01).
+on: pull_request
+
+# Token de solo lectura para todo el workflow (R-03).
+permissions:
+  contents: read
+
+# Un push nuevo al mismo PR cancela la corrida anterior (R-05).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Actions fijadas por SHA de commit, con el tag en comentario (R-02).
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: npm run lint
+        run: npm run lint
+
+      - name: npm run typecheck
+        run: npm run typecheck
+
+      - name: npm test
+        run: npm test
+        env:
+          MOCK_MODE: "true"
