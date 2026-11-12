@@ -51,7 +51,8 @@ export interface TestApp {
  * `FakeClock` y un logger que captura en memoria. `overrides` reemplaza deps (p. ej. un caso de uso que falla).
  */
 export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<TestApp> {
-  const { db, cleanup } = createTestDb();
+  const testDb = createTestDb();
+  const { db } = testDb;
   const users = new DrizzleUserRepository(db);
   const sessions = new DrizzleSessionRepository(db);
   const uow = new DrizzleUnitOfWork(db);
@@ -93,7 +94,18 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
     return user;
   }
 
-  return { app, deps, db, clock, logs, seedUser, countUsers: () => users.countAll(), cleanup };
+  return {
+    app,
+    deps,
+    db,
+    clock,
+    logs,
+    seedUser,
+    countUsers: () => users.countAll(),
+    cleanup: () => {
+      testDb.cleanup();
+    },
+  };
 }
 
 /** Extrae `aldebaran_sid=<valor>` de los `Set-Cookie` de una respuesta, o `undefined`. */

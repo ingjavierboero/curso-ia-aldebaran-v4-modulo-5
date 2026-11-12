@@ -7,14 +7,20 @@ export class FakePasswordHasher implements PasswordHasher {
   /** Se ejecuta durante `hash`, antes de resolver: sirve para simular una carrera. */
   onHash: (() => void) | null = null;
 
-  async hash(plain: string): Promise<string> {
-    this.hashCalls.push(plain);
-    this.onHash?.();
-    return `hashed:${plain}`;
+  // El executor corre en forma síncrona y una excepción dentro de él rechaza la promesa: mismo
+  // comportamiento que el `async` sin `await` de antes.
+  hash(plain: string): Promise<string> {
+    return new Promise((resolve) => {
+      this.hashCalls.push(plain);
+      this.onHash?.();
+      resolve(`hashed:${plain}`);
+    });
   }
 
-  async verify(hash: string, plain: string): Promise<boolean> {
-    this.verifyCalls.push({ hash, plain });
-    return hash === `hashed:${plain}`;
+  verify(hash: string, plain: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.verifyCalls.push({ hash, plain });
+      resolve(hash === `hashed:${plain}`);
+    });
   }
 }

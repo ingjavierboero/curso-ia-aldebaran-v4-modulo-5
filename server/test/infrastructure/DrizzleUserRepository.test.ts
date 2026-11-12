@@ -66,7 +66,7 @@ describe('DrizzleUserRepository', () => {
     const repo = new DrizzleUserRepository(t.db);
     repo.insert(makeUser({ id: 'u-1', email: 'admin@empresa.com' }));
 
-    expect(() => repo.insert(makeUser({ id: 'u-2', email: 'admin@empresa.com' }))).toThrow(FirstAdminAlreadyExists);
+    expect(() => { repo.insert(makeUser({ id: 'u-2', email: 'admin@empresa.com' })); }).toThrow(FirstAdminAlreadyExists);
 
     expect(repo.countAll()).toBe(1);
     expect(repo.findById('u-2')).toBeNull();
@@ -111,7 +111,7 @@ describe('DrizzleUserRepository', () => {
       throw new Error('Failed query', { cause: sqliteError });
     });
 
-    expect(() => repo.insert(makeUser())).toThrow(FirstAdminAlreadyExists);
+    expect(() => { repo.insert(makeUser()); }).toThrow(FirstAdminAlreadyExists);
   });
 
   it('un id duplicado no se confunde con un email duplicado y se propaga tal cual', () => {

@@ -12,6 +12,10 @@ export interface AuthState {
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   status: 'loading',
-  setUser: (user) => set({ user, status: 'authed' }),
-  setAnon: () => set({ user: null, status: 'anon' }),
+  setUser: (user) => {
+    set({ user, status: 'authed' });
+  },
+  setAnon: () => {
+    set({ user: null, status: 'anon' });
+  },
 }));

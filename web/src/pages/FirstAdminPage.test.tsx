@@ -18,13 +18,13 @@ describe('FirstAdminPage', () => {
     });
     const { router, user } = renderApp('/login');
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/setup'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/setup'); });
     await user.type(await screen.findByLabelText('Nombre'), 'Ana Admin');
     await user.type(screen.getByLabelText('Email'), 'ana@aldebaran.test');
     await user.type(screen.getByLabelText('Contraseña'), '12345678');
     await user.click(screen.getByRole('button', { name: 'Crear Admin' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
 
     const [call] = fetchMock.callsTo('POST', '/api/setup/first-admin');
@@ -59,7 +59,7 @@ describe('FirstAdminPage', () => {
       'GET /api/auth/session': SESSION_401,
     });
     const first = renderApp('/setup');
-    await waitFor(() => expect(first.router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(first.router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     first.view.unmount();
 
@@ -79,7 +79,7 @@ describe('FirstAdminPage', () => {
     await user.type(screen.getByLabelText('Contraseña'), '12345678');
     await user.click(screen.getByRole('button', { name: 'Crear Admin' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByText('El primer Admin ya fue registrado')).toBeInTheDocument();
     expect(fetchMock.callsTo('POST', '/api/setup/first-admin')).toHaveLength(1);
   });

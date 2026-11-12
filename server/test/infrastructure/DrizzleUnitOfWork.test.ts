@@ -85,7 +85,8 @@ describe('DrizzleUnitOfWork', () => {
       return new Proxy(tx, {
         get(target, prop, receiver) {
           if (prop === 'deferred' || prop === 'immediate' || prop === 'exclusive') behaviors.push(prop);
-          return Reflect.get(target, prop, receiver);
+          const value: unknown = Reflect.get(target, prop, receiver);
+          return value;
         },
       });
     }) as typeof sqlite.transaction;

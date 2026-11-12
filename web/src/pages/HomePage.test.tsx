@@ -17,7 +17,7 @@ describe('HomePage', () => {
     expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('anon');
 
@@ -45,7 +45,7 @@ describe('HomePage', () => {
       fireEvent.focus(window);
     });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(useAuthStore.getState().status).toBe('anon');
     expect(useAuthStore.getState().user).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Hola, Ana Admin' })).not.toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('HomePage', () => {
     expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('anon');
     expect(useAuthStore.getState().user).toBeNull();
@@ -84,10 +84,10 @@ describe('HomePage', () => {
     act(() => {
       fireEvent.focus(window);
     });
-    await waitFor(() => expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2));
+    await waitFor(() => { expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2); });
 
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(useAuthStore.getState().status).toBe('anon');
 
     // La sesión que estaba en vuelo responde tarde con 200.
@@ -114,17 +114,20 @@ describe('HomePage', () => {
     expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    await waitFor(() => expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2));
+    await waitFor(() => { expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2); });
     // Todavía en la pantalla principal (la navegación a /login espera su loader).
     expect(router.state.location.pathname).toBe('/');
     // `/Cerrar sesión/`: en jsdom el ícono de carga de antd puede quedar en el nombre accesible.
     expect(screen.getByRole('button', { name: /Cerrar sesión/ })).toBeInTheDocument();
     expect(screen.queryByText('Sesión no válida')).not.toBeInTheDocument();
 
-    await act(async () => {
+    // act con un callback que devuelve una promesa: se comporta como el act asíncrono (vacía las
+    // actualizaciones pendientes al resolverla), sin un `async` que no espera nada.
+    await act(() => {
       loginLoaderSession.resolve(SESSION_401);
+      return Promise.resolve();
     });
-    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
     expect(useAuthStore.getState().status).toBe('anon');
   });
 });

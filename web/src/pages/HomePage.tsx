@@ -59,7 +59,12 @@ export function HomePage() {
         <Brand $color={token.colorTextLightSolid}>Aldebaran</Brand>
         <Space>
           <HeaderText $color={token.colorTextLightSolid}>{user?.name}</HeaderText>
-          <Button onClick={onLogout} loading={loggingOut}>
+          <Button
+            onClick={() => {
+              void onLogout();
+            }}
+            loading={loggingOut}
+          >
             Cerrar sesión
           </Button>
         </Space>

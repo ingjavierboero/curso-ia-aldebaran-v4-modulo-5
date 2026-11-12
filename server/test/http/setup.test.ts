@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { responseBody } from '../support/responseBody.js';
 import { type TestApp, createTestApp, sessionCookieFrom } from '../support/testApp.js';
 
 let t: TestApp;
@@ -24,7 +25,7 @@ describe('setup del primer Admin', () => {
       .send({ name: 'Ana Pérez', email: 'Admin@Empresa.com', password: '12345678' });
     expect(created.status).toBe(201);
     expect(created.body).toEqual({
-      user: { id: expect.any(String), name: 'Ana Pérez', email: 'admin@empresa.com', role: 'admin', status: 'activo' },
+      user: { id: expect.any(String) as unknown, name: 'Ana Pérez', email: 'admin@empresa.com', role: 'admin', status: 'activo' },
     });
     // el registro no inicia sesión
     expect(sessionCookieFrom(created.headers['set-cookie'])).toBeUndefined();
@@ -34,14 +35,14 @@ describe('setup del primer Admin', () => {
 
     const login = await request(t.app).post('/api/auth/login').send({ email: 'admin@empresa.com', password: '12345678' });
     expect(login.status).toBe(200);
-    expect(login.body.user).toEqual(created.body.user);
+    expect(responseBody(login.body, { user: 'object' }).user).toEqual(responseBody(created.body, { user: 'object' }).user);
 
     const registro = t.logs.find((l) => l.record.event === 'first_admin');
     expect(registro?.record).toEqual({
       event: 'first_admin',
       outcome: 'ok',
       email: 'admin@empresa.com',
-      ip: expect.any(String),
+      ip: expect.any(String) as unknown,
       at: '2026-11-04T12:00:00.000Z',
     });
     expect(JSON.stringify(t.logs)).not.toContain('12345678');
@@ -63,7 +64,7 @@ describe('setup del primer Admin', () => {
       .post('/api/setup/first-admin')
       .send({ email: 'admin@empresa.com', password: '12345678' });
     expect(sinNombre.status).toBe(400);
-    expect(sinNombre.body.error).toMatch(/name/);
+    expect(responseBody(sinNombre.body, { error: 'string' }).error).toMatch(/name/);
 
     const nombreVacio = await request(t.app)
       .post('/api/setup/first-admin')
@@ -101,7 +102,7 @@ describe('setup del primer Admin', () => {
       .send({ name: 'Intruso', email: 'intruso@empresa.com', password: '12345678' });
 
     expect(res.status).toBe(409);
-    expect(res.body).toEqual({ error: expect.any(String) });
+    expect(res.body).toEqual({ error: expect.any(String) as unknown });
     expect(t.countUsers()).toBe(1);
   });
 
@@ -112,7 +113,7 @@ describe('setup del primer Admin', () => {
       request(t.app).post('/api/setup/first-admin').send({ name: 'Beto', email: 'beto@empresa.com', password: '12345678' }),
     ]);
 
-    expect([a.status, b.status].sort()).toEqual([201, 409]);
+    expect([a.status, b.status].sort((x, y) => x - y)).toEqual([201, 409]);
     expect(t.countUsers()).toBe(1);
   });
 
@@ -121,9 +122,9 @@ describe('setup del primer Admin', () => {
     t.cleanup();
     t = await createTestApp({
       registerFirstAdmin: {
-        execute: async () => {
+        execute: () => {
           calls++;
-          throw new Error('no debería ejecutarse');
+          return Promise.reject(new Error('no debería ejecutarse'));
         },
       },
     });
@@ -133,7 +134,7 @@ describe('setup del primer Admin', () => {
       .send({ name: 'a'.repeat(101), email: 'admin@empresa.com', password: '12345678' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/name/);
+    expect(responseBody(res.body, { error: 'string' }).error).toMatch(/name/);
     expect(calls).toBe(0);
     expect(t.logs.filter((l) => l.record.event === 'first_admin')).toHaveLength(0);
   });
@@ -146,7 +147,7 @@ describe('setup del primer Admin', () => {
     expect(res.status).toBe(400);
     const registros = t.logs.filter((l) => l.record.event === 'first_admin').map((l) => l.record);
     expect(registros).toEqual([
-      { event: 'first_admin', outcome: 'invalid', email: null, ip: expect.any(String), at: '2026-11-04T12:00:00.000Z' },
+      { event: 'first_admin', outcome: 'invalid', email: null, ip: expect.any(String) as unknown, at: '2026-11-04T12:00:00.000Z' },
     ]);
     expect(JSON.stringify(t.logs).toLowerCase()).not.toContain('miclave$ecreta99');
     expect(t.countUsers()).toBe(0);

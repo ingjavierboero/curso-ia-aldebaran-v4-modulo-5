@@ -76,7 +76,7 @@ export function deferred(): { reply: DeferredReply; resolve: (reply: Reply) => v
   const promise = new Promise<Reply>((r) => {
     resolve = r;
   });
-  return { reply: () => promise, resolve: (reply) => resolve(reply) };
+  return { reply: () => promise, resolve: (reply) => { resolve(reply); } };
 }
 
 function jsonResponse(status: number, body: unknown): Response {

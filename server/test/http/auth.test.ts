@@ -2,6 +2,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { createJsonLogger } from '../../src/infrastructure/http/authLog.js';
+import { responseBody } from '../support/responseBody.js';
 import { type TestApp, createTestApp, sessionCookieFrom } from '../support/testApp.js';
 
 const PASSWORD = 'contraseña-segura';
@@ -60,7 +61,7 @@ describe('POST /api/auth/login', () => {
     const res = await request(t.app).post('/api/auth/login').send({ email: 'Admin@Empresa.com', password: PASSWORD });
 
     expect(res.status).toBe(200);
-    expect(res.body.user.email).toBe('admin@empresa.com');
+    expect(responseBody(res.body, { user: { email: 'string' } }).user.email).toBe('admin@empresa.com');
     expect(sessionCookieFrom(res.headers['set-cookie'])).toBeDefined();
   });
 
@@ -89,15 +90,15 @@ describe('POST /api/auth/login', () => {
 
     const sinPassword = await request(t.app).post('/api/auth/login').send({ email: 'admin@empresa.com' });
     expect(sinPassword.status).toBe(400);
-    expect(sinPassword.body.error).toMatch(/password/);
+    expect(responseBody(sinPassword.body, { error: 'string' }).error).toMatch(/password/);
 
     const sinEmail = await request(t.app).post('/api/auth/login').send({ password: PASSWORD });
     expect(sinEmail.status).toBe(400);
-    expect(sinEmail.body.error).toMatch(/email/);
+    expect(responseBody(sinEmail.body, { error: 'string' }).error).toMatch(/email/);
 
     const tipoInvalido = await request(t.app).post('/api/auth/login').send({ email: 123, password: PASSWORD });
     expect(tipoInvalido.status).toBe(400);
-    expect(tipoInvalido.body.error).toMatch(/email/);
+    expect(responseBody(tipoInvalido.body, { error: 'string' }).error).toMatch(/email/);
 
     expect(countSessions()).toBe(0);
   });
@@ -128,9 +129,9 @@ describe('POST /api/auth/login', () => {
     t.cleanup();
     t = await createTestApp({
       login: {
-        execute: async () => {
+        execute: () => {
           calls += 1;
-          throw new Error('no debería ejecutarse');
+          return Promise.reject(new Error('no debería ejecutarse'));
         },
       },
     });
@@ -150,9 +151,9 @@ describe('POST /api/auth/login', () => {
     t.cleanup();
     t = await createTestApp({
       login: {
-        execute: async () => {
+        execute: () => {
           calls += 1;
-          throw new Error('no debería ejecutarse');
+          return Promise.reject(new Error('no debería ejecutarse'));
         },
       },
     });
@@ -185,7 +186,7 @@ describe('POST /api/auth/login', () => {
       .send({ email: 'admin@empresa.com', password: 'a'.repeat(1025) });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/password/);
+    expect(responseBody(res.body, { error: 'string' }).error).toMatch(/password/);
     expect(t.logs.filter((l) => l.record.event === 'login')).toHaveLength(0);
     expect(countSessions()).toBe(0);
   });
@@ -204,7 +205,7 @@ describe('POST /api/auth/login', () => {
       .send('{"email": ');
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: expect.any(String) });
+    expect(res.body).toEqual({ error: expect.any(String) as unknown });
   });
 });
 
@@ -256,7 +257,7 @@ describe('FR-08 y errores', () => {
     expect(session.status).toBe(200);
 
     for (const res of [created, login, session]) {
-      expect(Object.keys(res.body.user).sort()).toEqual(['email', 'id', 'name', 'role', 'status']);
+      expect(Object.keys(responseBody(res.body, { user: 'object' }).user).sort()).toEqual(['email', 'id', 'name', 'role', 'status']);
       expect(res.text).not.toMatch(/passwordHash|password_hash|\$argon2/);
     }
   });
@@ -266,9 +267,7 @@ describe('FR-08 y errores', () => {
     t.cleanup();
     t = await createTestApp({
       login: {
-        execute: async () => {
-          throw new Error('SQLITE_BUSY: detalle interno /ruta/secreta');
-        },
+        execute: () => Promise.reject(new Error('SQLITE_BUSY: detalle interno /ruta/secreta')),
       },
     });
 
@@ -287,9 +286,9 @@ describe('FR-08 y errores', () => {
     t.cleanup();
     t = await createTestApp({
       login: {
-        execute: async () => {
+        execute: () => {
           const cause = Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' });
-          throw new DrizzleQueryError(QUERY, PARAMS, cause);
+          return Promise.reject(new DrizzleQueryError(QUERY, PARAMS, cause));
         },
       },
     });
@@ -322,7 +321,7 @@ describe('authLog', () => {
       event: 'login',
       outcome: 'ok',
       email: 'admin@empresa.com',
-      ip: expect.any(String),
+      ip: expect.any(String) as unknown,
       at: '2026-11-04T12:00:00.000Z',
     });
     expect(attempts[1]).toMatchObject({ event: 'login', outcome: 'invalid', email: 'admin@empresa.com' });
@@ -340,7 +339,7 @@ describe('authLog', () => {
     expect(res.status).toBe(400);
     const attempts = t.logs.filter((l) => l.record.event === 'login').map((l) => l.record);
     expect(attempts).toEqual([
-      { event: 'login', outcome: 'invalid', email: null, ip: expect.any(String), at: '2026-11-04T12:00:00.000Z' },
+      { event: 'login', outcome: 'invalid', email: null, ip: expect.any(String) as unknown, at: '2026-11-04T12:00:00.000Z' },
     ]);
     expect(JSON.stringify(t.logs).toLowerCase()).not.toContain('miclave$ecreta99');
   });
