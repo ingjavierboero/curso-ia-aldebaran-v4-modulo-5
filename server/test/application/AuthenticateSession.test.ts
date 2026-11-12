@@ -31,7 +31,7 @@ describe('AuthenticateSession', () => {
 
     expect(authenticated).toEqual({
       id: user.id,
-      name: 'Ana Pérezz',
+      name: 'Ana Pérez',
       email: 'admin@empresa.com',
       role: 'admin',
       status: 'activo',
