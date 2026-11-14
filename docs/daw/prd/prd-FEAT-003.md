@@ -5,8 +5,8 @@
 | Ticket | FEAT-003 |
 | Tracker | none |
 | Date | 2026-11-14 |
-| PRD loops | 1 |
-| Loops since last human decision | 1 |
+| PRD loops | 2 |
+| Loops since last human decision | 0 |
 
 ## Context and Problem
 
@@ -26,7 +26,7 @@ de corridas, un estado de salud consultable y un aviso visible para los usuarios
 ## Functional Requirements
 
 - FR-01: El sistema debe exponer una consulta de salud accesible sin iniciar sesión, que informa solo el estado general: "ok" o "degradado".
-- FR-02: La consulta de salud, hecha con una sesión válida, debe informar además el estado de la base de datos y el de cada proceso automático registrado (nombre, última corrida, resultado de la última corrida y si está atrasado).
+- FR-02: La consulta de salud, hecha con una sesión válida mientras la base de datos responde, debe informar además el estado de la base de datos y el de cada proceso automático registrado (nombre, última corrida, resultado de la última corrida y si está atrasado). Si la base de datos no responde, la consulta informa solo el estado general, haya o no sesión, porque la sesión no se puede validar sin la base.
 - FR-03: El sistema debe considerar degradado el estado general si la base de datos no responde, si algún proceso registrado está atrasado o si la última corrida de algún proceso registrado terminó con error.
 - FR-04: El sistema debe permitir que cada proceso automático se registre con un nombre único y el intervalo esperado entre sus ejecuciones.
 - FR-05: El sistema debe registrar cada corrida de un proceso automático: inicio, fin y resultado (exitosa o con error).
@@ -45,9 +45,9 @@ de corridas, un estado de salud consultable y un aviso visible para los usuarios
 
 - AC-01 (FR-01): WHEN se consulta la salud sin sesión y todo está sano, THE sistema SHALL responder 200 con el estado "ok" y ningún otro dato.
 - AC-02 (FR-01): WHEN se consulta la salud sin sesión y algo está degradado, THE sistema SHALL responder 503 con el estado "degradado" y ningún otro dato.
-- AC-03 (FR-02): WHEN se consulta la salud con una sesión válida, THE sistema SHALL informar el estado general, el de la base de datos y, por cada proceso registrado, su nombre, su última corrida, el resultado de esa corrida y si está atrasado.
+- AC-03 (FR-02): WHEN se consulta la salud con una sesión válida y la base de datos responde, THE sistema SHALL informar el estado general, el de la base de datos y, por cada proceso registrado, su nombre, su última corrida, el resultado de esa corrida y si está atrasado.
 - AC-04 (FR-02): IF la sesión enviada es inválida o está vencida, THEN THE sistema SHALL responder como a una consulta sin sesión, sin ningún detalle.
-- AC-05 (FR-03): IF la base de datos no responde, THEN THE sistema SHALL informar el estado general "degradado" y la base como no disponible.
+- AC-05 (FR-03): IF la base de datos no responde, THEN THE consulta de salud SHALL informar solo el estado general "degradado", con o sin sesión, y THE banner de la pantalla principal SHALL nombrar "Base de datos" como lo degradado.
 - AC-06 (FR-03): IF la última corrida de un proceso registrado terminó con error, THEN THE sistema SHALL informar el estado general "degradado" aunque el proceso no esté atrasado.
 - AC-07 (FR-04): IF se intenta registrar un proceso con un nombre ya registrado, THEN THE sistema SHALL rechazar el registro.
 - AC-08 (FR-04): IF se intenta registrar un proceso con un intervalo menor o igual a cero, THEN THE sistema SHALL rechazar el registro.
@@ -64,6 +64,10 @@ de corridas, un estado de salud consultable y un aviso visible para los usuarios
 - Atraso: umbral propio por proceso, 2 intervalos sin corrida exitosa.
 - Banner en la pantalla principal ya en este ticket.
 - Una última corrida con error también degrada el estado.
+
+### Decisiones (usuario, 2026-11-14, vuelta desde VERIFY)
+
+- Con la base de datos caída la consulta no valida la sesión: validarla esperaba ~5 s en la base bloqueada y congelaba el servidor. Responde solo el estado general, también a un usuario con sesión, y el banner nombra "Base de datos" cuando recibe "degradado" sin detalle. FR-02, AC-03 y AC-05 se reescribieron para decir eso.
 
 ## Out of Scope
 
