@@ -6,7 +6,7 @@
 | Tools | revisión del diff `main...HEAD` (grep de patrones + lectura), `npm audit` (npm 11.21.1), `oxlint --type-aware` |
 | Date | 2026-11-14 |
 
-Alcance: el diff de `feat/FEAT-003-chequeo-de-salud` contra `main`: `server/src/domain/health/*`, `server/src/application/health/*`, `server/src/application/auth/{PeekSession,resolveSession,AuthenticateSession}.ts`, `server/src/infrastructure/db/{schema,DrizzleJobRunRepository,SqliteDatabaseProbe}.ts`, la migración `0001_left_toad.sql`, `server/src/infrastructure/http/{routes/health,authMiddleware,app}.ts`, `server/src/main.ts` y `web/src/{api/healthApi,components/HealthBanner,pages/HomePage}.tsx`.
+Re-corrida en el re-cierre de CODE (HEAD `7927608`): el único cambio desde la corrida anterior es un test web (`web/src/pages/HomePage.test.tsx`), sin código de producción nuevo. Alcance: el diff de `feat/FEAT-003-chequeo-de-salud` contra `main`: `server/src/domain/health/*`, `server/src/application/health/*`, `server/src/application/auth/{PeekSession,resolveSession,AuthenticateSession}.ts`, `server/src/infrastructure/db/{schema,DrizzleJobRunRepository,SqliteDatabaseProbe}.ts`, la migración `0001_left_toad.sql`, `server/src/infrastructure/http/{routes/health,authMiddleware,app}.ts`, `server/src/main.ts` y `web/src/{api/healthApi,components/HealthBanner,pages/HomePage}.tsx`.
 
 | Rule | Verdict | Notes |
 |---|---|---|
