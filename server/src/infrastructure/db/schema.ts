@@ -38,4 +38,24 @@ export const sessions = sqliteTable(
   (t) => [index('sessions_user_id_idx').on(t.userId)],
 );
 
-export const schema = { users, sessions };
+export const JOB_RUN_OUTCOMES = ['ok', 'error'] as const;
+
+// Corridas de procesos automáticos (FEAT-003). No guarda el mensaje de error (R-07).
+export const jobRuns = sqliteTable(
+  'job_runs',
+  {
+    id: text('id').primaryKey(),
+    jobName: text('job_name').notNull(),
+    // ISO 8601
+    startedAt: text('started_at').notNull(),
+    // ISO 8601
+    finishedAt: text('finished_at').notNull(),
+    outcome: text('outcome', { enum: JOB_RUN_OUTCOMES }).notNull(),
+  },
+  (t) => [
+    check('job_runs_outcome_check', sql`${t.outcome} IN ('ok', 'error')`),
+    index('job_runs_job_outcome_finished_idx').on(t.jobName, t.outcome, t.finishedAt),
+  ],
+);
+
+export const schema = { users, sessions, jobRuns };
