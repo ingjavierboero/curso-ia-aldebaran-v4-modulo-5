@@ -18,6 +18,7 @@ import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { type AppDeps, createApp } from '../../src/infrastructure/http/app.js';
 import type { Logger, LogRecord } from '../../src/infrastructure/http/authLog.js';
+import { createHealthEventLog } from '../../src/infrastructure/logging/healthEventLog.js';
 import { FakeClock } from './FakeClock.js';
 import { FakeDatabaseProbe } from './FakeDatabaseProbe.js';
 import { InMemoryJobRunRepository } from './InMemoryJobRunRepository.js';
@@ -88,7 +89,15 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),
-    getHealth: new GetHealth({ probe, runs: jobRuns, registry: jobRegistry, clock, systemStartedAt: clock.now() }),
+    getHealth: new GetHealth({
+      probe,
+      runs: jobRuns,
+      registry: jobRegistry,
+      clock,
+      systemStartedAt: clock.now(),
+      // El adaptador real sobre el logger de captura: los tests afirman sobre la línea de log.
+      log: createHealthEventLog(logger, clock),
+    }),
     peekSession: new PeekSession({ users, sessions, tokens, clock }),
     clock,
     logger,
