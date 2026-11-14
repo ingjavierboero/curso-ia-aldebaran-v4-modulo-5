@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import styled from 'styled-components';
 import { ApiError, errorText, getSession, logout } from '../api/authApi';
+import { HealthBanner } from '../components/HealthBanner';
 import { Stack } from '../components/Stack';
 import { useAuthStore } from '../store/authStore';
 
@@ -71,6 +72,7 @@ export function HomePage() {
       </HeaderBar>
       <PaddedContent $padding={token.paddingLG}>
         <Stack orientation="vertical" size="middle">
+          <HealthBanner />
           {error && <Alert type="error" title={error} showIcon />}
           <Typography.Title level={3}>Hola, {user?.name}</Typography.Title>
         </Stack>

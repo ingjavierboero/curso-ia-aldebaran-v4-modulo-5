@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ANA, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
+import { ANA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('LoginPage', () => {
@@ -11,6 +11,8 @@ describe('LoginPage', () => {
       // Antes del login no hay sesión; después, el loader de `/` la encuentra.
       'GET /api/auth/session': [SESSION_401, { status: 200, body: { user: ANA } }],
       'POST /api/auth/login': { status: 200, body: { user: ANA } },
+      // La pantalla principal consulta la salud al montar (`HealthBanner`).
+      'GET /api/health': HEALTH_OK,
     });
     const { router, user } = renderApp('/login');
 

@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useAuthStore } from '../store/authStore';
-import { ANA, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
+import { ANA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('HomePage', () => {
@@ -9,6 +9,7 @@ describe('HomePage', () => {
   it('test_home_page_cerrar_sesion_navega_a_login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/health': HEALTH_OK,
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, SESSION_401],
       'POST /api/auth/logout': { status: 204 },
     });
@@ -32,6 +33,7 @@ describe('HomePage', () => {
   it('test_get_session_401_desde_home_sesion_vencida_lleva_a_login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/health': HEALTH_OK,
       // La primera consulta (loader de `/`) es válida; la que hace la pantalla al volver a tener
       // foco encuentra la sesión vencida.
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, SESSION_401],
@@ -55,6 +57,7 @@ describe('HomePage', () => {
   it('401 en el logout deja el store en anon y lleva a /login', async () => {
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/health': HEALTH_OK,
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, SESSION_401],
       'POST /api/auth/logout': SESSION_401,
     });
@@ -74,6 +77,7 @@ describe('HomePage', () => {
     const lateSession = deferred();
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/health': HEALTH_OK,
       // loader de /, revalidación por focus (queda en vuelo) y loader de /login tras el logout.
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, lateSession.reply, SESSION_401],
       'POST /api/auth/logout': { status: 204 },
@@ -105,6 +109,7 @@ describe('HomePage', () => {
     const loginLoaderSession = deferred();
     const fetchMock = mockFetch({
       'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/health': HEALTH_OK,
       // La consulta del loader de /login queda en vuelo: la pantalla principal sigue montada.
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, loginLoaderSession.reply],
       'POST /api/auth/logout': SESSION_401,

@@ -93,3 +93,6 @@ export const ANA = {
 } as const;
 
 export const SESSION_401 = { status: 401, body: { error: 'Sesión no válida' } } as const;
+
+/** `GET /api/health` con todo sano: la pantalla principal lo consulta al montar (`HealthBanner`). */
+export const HEALTH_OK = { status: 200, body: { status: 'ok', db: 'disponible', jobs: [] } } as const;
