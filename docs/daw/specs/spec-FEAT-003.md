@@ -6,7 +6,7 @@
 | PRD | docs/daw/prd/prd-FEAT-003.md |
 | Tier | FEATURE |
 | Date | 2026-11-14 |
-| Spec loops | 2 |
+| Spec loops | 3 |
 | Loops since last human decision | 0 |
 
 ## Summary
@@ -216,9 +216,10 @@ reintenta fuera del intervalo.
 - [ ] `test_banner_se_actualiza_cada_60_segundos` — fake timers — validates AC-12
 - [ ] `test_banner_error_de_red_conserva_ultimo_estado` — también con un body de forma inválida (sad path) — validates AC-13
 - [ ] `test_banner_respuesta_tardia_rechazada_tras_desmontar` — (sad path) — validates AC-13
+- [ ] `test_home_muestra_banner_con_estado_degradado` — en `web/src/pages/HomePage.test.tsx`: con sesión y `/api/health` respondiendo degradado, la pantalla principal muestra el banner; falla si `HealthBanner` no está montado en `HomePage` — validates AC-12, AC-05
 
 **Completion criterion**
-Los 6 tests pasan y los tests existentes de `HomePage` y `LoginPage` siguen pasando con la ruta nueva en su `mockFetch`.
+Los 7 tests pasan y los tests existentes de `HomePage` y `LoginPage` siguen pasando con la ruta nueva en su `mockFetch`.
 
 ## Final verification
 - `npm run lint`, `npm run typecheck` y `npm test` terminan sin errores.
