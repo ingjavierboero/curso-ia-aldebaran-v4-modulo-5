@@ -2,6 +2,7 @@ import { AuthenticateSession } from '../../src/application/auth/AuthenticateSess
 import { GetSetupStatus } from '../../src/application/auth/GetSetupStatus.js';
 import { Login } from '../../src/application/auth/Login.js';
 import { Logout } from '../../src/application/auth/Logout.js';
+import { PeekSession } from '../../src/application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
 import { Email } from '../../src/domain/user/Email.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
@@ -37,6 +38,7 @@ export function createAuthContext() {
   const login = new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash: DUMMY_HASH });
   const logout = new Logout({ sessions, tokens });
   const authenticateSession = new AuthenticateSession({ users, sessions, tokens, clock });
+  const peekSession = new PeekSession({ users, sessions, tokens, clock });
   const registerFirstAdmin = new RegisterFirstAdmin({ uow, hasher, ids, clock });
   const getSetupStatus = new GetSetupStatus({ users });
 
@@ -66,6 +68,7 @@ export function createAuthContext() {
     login,
     logout,
     authenticateSession,
+    peekSession,
     registerFirstAdmin,
     getSetupStatus,
     seedUser,

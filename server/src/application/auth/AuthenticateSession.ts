@@ -3,6 +3,7 @@ import type { Clock } from '../../domain/shared/Clock.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';
 import { type PublicUser, toPublicUser } from './dto/PublicUser.js';
 import { Unauthenticated } from './errors.js';
+import { resolveSession } from './resolveSession.js';
 import type { SessionTokenGenerator } from './SessionTokenGenerator.js';
 
 export interface AuthenticateSessionDeps {
@@ -20,23 +21,14 @@ export class AuthenticateSession {
   constructor(private readonly deps: AuthenticateSessionDeps) {}
 
   execute(token: string): PublicUser {
-    const { users, sessions, tokens, clock } = this.deps;
-    const session = sessions.findByTokenHash(tokens.hash(token));
-    if (!session) throw new Unauthenticated();
-
-    const now = clock.now();
-    if (session.isExpired(now)) {
-      sessions.delete(session.id);
+    const { sessions } = this.deps;
+    const result = resolveSession(this.deps, token);
+    if (!result.valid) {
+      if (result.session) sessions.delete(result.session.id);
       throw new Unauthenticated();
     }
 
-    const user = users.findById(session.userId);
-    if (!user || !user.isActive()) {
-      sessions.delete(session.id);
-      throw new Unauthenticated();
-    }
-
-    sessions.touch(session.id, now);
-    return toPublicUser(user);
+    sessions.touch(result.session.id, result.now);
+    return toPublicUser(result.user);
   }
 }
