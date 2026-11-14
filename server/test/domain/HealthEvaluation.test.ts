@@ -17,7 +17,7 @@ function run(id: string, finishedMs: number, outcome: JobOutcome): JobRun {
 const def = new JobDefinition({ name: 'facturacion', intervalMs: 10 * MINUTE });
 
 function job(lastRun: JobRun | null, lastSuccess: JobRun | null): JobHealthInput {
-  return { definition: def, lastRun, lastSuccess };
+  return { definition: def, readFailed: false, lastRun, lastSuccess };
 }
 
 describe('evaluateHealth', () => {
@@ -40,7 +40,7 @@ describe('evaluateHealth', () => {
     const base = { systemStartedAt: STARTED, dbAvailable: true, jobs: [job(null, null)] };
 
     const recent = evaluateHealth({ ...base, now: at(20 * MINUTE) });
-    expect(recent.jobs[0]).toEqual({ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false });
+    expect(recent.jobs[0]).toEqual({ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false, readFailed: false });
     expect(recent.status).toBe('ok');
 
     const late = evaluateHealth({ ...base, now: at(20 * MINUTE + 1) });
@@ -66,6 +66,7 @@ describe('evaluateHealth', () => {
       lastRunAt: at(6 * MINUTE),
       lastOutcome: 'error',
       late: false,
+      readFailed: false,
     });
   });
 
@@ -83,7 +84,7 @@ describe('evaluateHealth', () => {
     expect(result).toEqual({
       status: 'degradado',
       db: 'no_disponible',
-      jobs: [{ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false }],
+      jobs: [{ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false, readFailed: false }],
     });
   });
 
@@ -102,13 +103,53 @@ describe('evaluateHealth', () => {
       now: at(6 * MINUTE),
       systemStartedAt: STARTED,
       dbAvailable: true,
-      jobs: [job(success, success), { definition: other, lastRun: null, lastSuccess: null }],
+      jobs: [job(success, success), { definition: other, readFailed: false, lastRun: null, lastSuccess: null }],
     });
     expect(result.status).toBe('ok');
     expect(result.db).toBe('disponible');
     expect(result.jobs).toEqual([
-      { name: 'facturacion', lastRunAt: at(5 * MINUTE), lastOutcome: 'ok', late: false },
-      { name: 'recordatorios', lastRunAt: null, lastOutcome: null, late: false },
+      { name: 'facturacion', lastRunAt: at(5 * MINUTE), lastOutcome: 'ok', late: false, readFailed: false },
+      { name: 'recordatorios', lastRunAt: null, lastOutcome: null, late: false, readFailed: false },
     ]);
+  });
+
+  // AC-06: la lectura fallida de las corridas de un proceso lo degrada aunque la base esté disponible
+  it('test_evaluacion_lectura_fallida_degrada_el_proceso', () => {
+    const success = run('r-1', 5 * MINUTE, 'ok');
+    const other = new JobDefinition({ name: 'recordatorios', intervalMs: 10 * MINUTE });
+
+    const result = evaluateHealth({
+      now: at(6 * MINUTE),
+      systemStartedAt: STARTED,
+      dbAvailable: true,
+      jobs: [job(success, success), { definition: other, readFailed: true }],
+    });
+
+    expect(result.status).toBe('degradado');
+    expect(result.db).toBe('disponible');
+    expect(result.jobs[0]).toEqual({
+      name: 'facturacion',
+      lastRunAt: at(5 * MINUTE),
+      lastOutcome: 'ok',
+      late: false,
+      readFailed: false,
+    });
+    expect(result.jobs[1]?.readFailed).toBe(true);
+  });
+
+  // AC-06: un proceso con lectura fallida no informa corrida ni atraso, aunque hayan pasado intervalos
+  it('test_evaluacion_lectura_fallida_sin_corrida_ni_atraso', () => {
+    const result = evaluateHealth({
+      now: at(500 * MINUTE),
+      systemStartedAt: STARTED,
+      dbAvailable: true,
+      jobs: [{ definition: def, readFailed: true }],
+    });
+
+    expect(result).toEqual({
+      status: 'degradado',
+      db: 'disponible',
+      jobs: [{ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false, readFailed: true }],
+    });
   });
 });
