@@ -75,7 +75,8 @@
 |---|---|---|---|---|---|
 | R-01 | Una cookie inválida en `/api/health` devuelve 401 y borra la cookie del usuario, o da detalle | S | M | M | `PeekSession` devuelve `null` y la ruta responde como anónima; test de cookie inválida |
 | R-02 | La respuesta pública filtra nombres, horarios o errores internos | I | M | M | Respuesta sin sesión limitada a `{status}`; test que compara el body exacto |
-| R-03 | Consultas encadenadas sin sesión bloquean el event loop con una base bloqueada | D | L | M | `busy_timeout = 500` en una conexión dedicada (ADR-005); sin la base, GetHealth no consulta `job_runs` |
+| R-03 | Consultas encadenadas sin sesión bloquean el event loop con una base bloqueada | D | L | M | `busy_timeout = 500` en una conexión dedicada (ADR-005); sin la base, GetHealth no consulta `job_runs`. Ventana residual: si el lock aparece entre el sondeo y una lectura en la conexión compartida, esa lectura puede esperar hasta 5 s; queda acotada porque la base corre en WAL (un escritor normal no bloquea lectores) y un error de lectura se informa como "degradado" |
+| R-10 | Un usuario con sesión, con la base bloqueada, espera ~5 s y congela el server al validar su sesión en la conexión compartida (medido: 5,2 s) | D | M | H | Con `db: "no_disponible"` la ruta no consulta `PeekSession` y responde la anónima en ~0,5 s; test con cookie y lock tomado desde otra conexión |
 | R-04 | Agregar la ruta pública debilita el deny-by-default | E | L | H | Coincidencia exacta de método y ruta; tests de variantes (`/api/health/`, `POST`, mayúsculas) |
 | R-05 | Cada poll con sesión inválida inunda el log | R | M | L | La ruta de salud no pasa por el middleware y no loguea `session_rejected` |
 | R-06 | El polling renueva la sesión y anula el vencimiento por inactividad | E | H | H | `PeekSession` no llama a `touch`; test que verifica que `last_activity_at` no cambia |

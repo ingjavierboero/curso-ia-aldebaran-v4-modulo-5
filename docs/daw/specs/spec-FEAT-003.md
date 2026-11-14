@@ -6,8 +6,8 @@
 | PRD | docs/daw/prd/prd-FEAT-003.md |
 | Tier | FEATURE |
 | Date | 2026-11-14 |
-| Spec loops | 1 |
-| Loops since last human decision | 1 |
+| Spec loops | 2 |
+| Loops since last human decision | 0 |
 
 ## Summary
 Se agrega un dominio `health` con la definición de procesos, sus corridas y una evaluación pura del
@@ -144,21 +144,25 @@ Los 9 tests pasan; los tests existentes de `AuthenticateSession` siguen pasando 
 **Logic**
 Implements FR-01 y la parte HTTP de FR-02. La ruta lee la cookie con `readSessionToken` y llama a
 `PeekSession`; no usa `req.user`, no lanza `Unauthenticated`, no emite `Set-Cookie` y no loguea
-`session_rejected`.
+`session_rejected`. **Solo valida la sesión si el reporte dice `db: "disponible"`**: las sesiones
+viven en la misma base, y validarla con la base bloqueada espera el timeout de la conexión
+compartida (~5 s medido) y congela el event loop. Con la base no disponible la respuesta es siempre
+la anónima, `{status: "degradado"}`, haya o no cookie (decisión del usuario, 2026-11-14; el banner
+la interpreta en el Block 4). Si `PeekSession` lanza, también responde la anónima, nunca 500.
 
 **API contract**
 - Method + path: `GET /api/health` y `HEAD /api/health`
 - Request: sin body ni parámetros; cookie `aldebaran_sid` opcional.
 - Response sin sesión válida: `{ "status": "ok" | "degradado" }` y nada más. Response con sesión válida: `{ "status", "db": "disponible" | "no_disponible", "jobs": [{ "name": string, "lastRunAt": string | null, "lastOutcome": "ok" | "error" | null, "late": boolean }] }`. `HEAD` responde el mismo código sin body.
 - Error codes: 200 (ok), 503 (degradado); cualquier otro método o variante de ruta sin sesión → 401 como el resto de `/api`.
-- Auth: pública; el detalle exige una sesión válida, verificada con `PeekSession` sin renovarla.
+- Auth: pública; el detalle exige una sesión válida, verificada con `PeekSession` sin renovarla, y solo se verifica con la base disponible.
 
 **Input validation**
 - Cookie `aldebaran_sid`: string opcional; cualquier valor que no corresponda a una sesión válida se trata como ausente.
 
 **Error handling**
 - Cookie inválida o vencida — respuesta anónima (sin detalle), sin 401 y sin borrar la cookie.
-- Base no disponible — 503 `degradado` en menos de 1 s, nunca 500.
+- Base no disponible — 503 `degradado` en menos de 1 s, nunca 500, con o sin cookie; no se consulta `PeekSession`.
 - Variante de la ruta (`/api/health/`, `POST`, mayúsculas) sin sesión — 401, el deny-by-default no cambia.
 
 **Required tests**
@@ -167,11 +171,12 @@ Implements FR-01 y la parte HTTP de FR-02. La ruta lee la cookie con `readSessio
 - [ ] `test_health_con_sesion_trae_detalle` — validates AC-03
 - [ ] `test_health_cookie_invalida_rechazada_responde_anonimo_sin_401` — sin `Set-Cookie` (sad path) — validates AC-04
 - [ ] `test_health_base_caida_503_en_menos_de_un_segundo` — (sad path) — validates AC-05, AC-14
+- [ ] `test_health_base_caida_con_cookie_503_anonimo_en_menos_de_un_segundo` — cookie válida y lock EXCLUSIVE tomado desde **otra** conexión al mismo archivo; 503 `{status:"degradado"}` en menos de 1 s (sad path) — validates AC-05, AC-14
 - [ ] `test_health_variantes_de_ruta_no_autorizado_401` — `/api/health/`, `POST`, `/API/HEALTH` (sad path) — validates AC-01
 - [ ] `test_health_head_responde_codigo_sin_body` — validates AC-02
 
 **Completion criterion**
-Los 7 tests pasan, los tests existentes de `middleware.test.ts` siguen pasando y el resto de `/api` sigue exigiendo sesión.
+Los 8 tests pasan, los tests existentes de `middleware.test.ts` siguen pasando y el resto de `/api` sigue exigiendo sesión.
 
 ## Block 4 — Banner de salud en la pantalla principal
 
@@ -185,7 +190,9 @@ Los 7 tests pasan, los tests existentes de `middleware.test.ts` siguen pasando y
 
 **Logic**
 Implements FR-07 y NFR-04. Un 200 sin detalle (sesión perdida) no muestra banner ni navega: el flujo
-de sesión de FEAT-001 sigue decidiendo. Un error de red conserva el último estado mostrado y no
+de sesión de FEAT-001 sigue decidiendo. **Un 503 sin detalle** (el banner solo se muestra a
+usuarios con sesión, y el server retiene el detalle a un usuario logueado únicamente cuando la base
+no responde) **muestra el banner nombrando "Base de datos"** (decisión del usuario, 2026-11-14). Un error de red conserva el último estado mostrado y no
 reintenta fuera del intervalo.
 
 **API contract**
@@ -204,13 +211,14 @@ reintenta fuera del intervalo.
 
 **Required tests**
 - [ ] `test_banner_visible_con_estado_degradado_nombra_lo_degradado` — validates AC-12
+- [ ] `test_banner_degradado_sin_detalle_nombra_base_de_datos` — 503 `{status:"degradado"}` sin detalle → el banner dice "Base de datos" — validates AC-12
 - [ ] `test_banner_oculto_con_estado_ok` — validates AC-13
 - [ ] `test_banner_se_actualiza_cada_60_segundos` — fake timers — validates AC-12
 - [ ] `test_banner_error_de_red_conserva_ultimo_estado` — también con un body de forma inválida (sad path) — validates AC-13
 - [ ] `test_banner_respuesta_tardia_rechazada_tras_desmontar` — (sad path) — validates AC-13
 
 **Completion criterion**
-Los 5 tests pasan y los tests existentes de `HomePage` y `LoginPage` siguen pasando con la ruta nueva en su `mockFetch`.
+Los 6 tests pasan y los tests existentes de `HomePage` y `LoginPage` siguen pasando con la ruta nueva en su `mockFetch`.
 
 ## Final verification
 - `npm run lint`, `npm run typecheck` y `npm test` terminan sin errores.
