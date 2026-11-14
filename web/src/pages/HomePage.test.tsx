@@ -5,6 +5,21 @@ import { ANA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchM
 import { renderApp } from '../test/renderApp';
 
 describe('HomePage', () => {
+  // La pantalla principal muestra el banner de salud cuando el sistema está degradado (FR-07)
+  it('test_home_muestra_banner_con_estado_degradado', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/auth/session': { status: 200, body: { user: ANA } },
+      'GET /api/health': { status: 503, body: { status: 'degradado' } },
+    });
+    renderApp('/');
+
+    expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Base de datos');
+    expect(fetchMock.callsTo('GET', '/api/health')[0]?.init?.credentials).toBe('include');
+  });
+
   // HomePage al cerrar sesión navega a /login
   it('test_home_page_cerrar_sesion_navega_a_login', async () => {
     const fetchMock = mockFetch({
