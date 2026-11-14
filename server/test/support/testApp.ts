@@ -3,7 +3,10 @@ import { AuthenticateSession } from '../../src/application/auth/AuthenticateSess
 import { GetSetupStatus } from '../../src/application/auth/GetSetupStatus.js';
 import { Login } from '../../src/application/auth/Login.js';
 import { Logout } from '../../src/application/auth/Logout.js';
+import { PeekSession } from '../../src/application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
+import { GetHealth } from '../../src/application/health/GetHealth.js';
+import { JobRegistry } from '../../src/application/health/JobRegistry.js';
 import { Email } from '../../src/domain/user/Email.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
 import { Argon2PasswordHasher } from '../../src/infrastructure/auth/Argon2PasswordHasher.js';
@@ -16,6 +19,8 @@ import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRe
 import { type AppDeps, createApp } from '../../src/infrastructure/http/app.js';
 import type { Logger, LogRecord } from '../../src/infrastructure/http/authLog.js';
 import { FakeClock } from './FakeClock.js';
+import { FakeDatabaseProbe } from './FakeDatabaseProbe.js';
+import { InMemoryJobRunRepository } from './InMemoryJobRunRepository.js';
 import { createTestDb } from './sqliteTestDb.js';
 
 /** argon2id de costo bajo, solo para tests (los de producción los usa `main.ts`). */
@@ -40,6 +45,12 @@ export interface TestApp {
   deps: AppDeps;
   db: Db;
   clock: FakeClock;
+  /** Sondeo de la base que usa `getHealth` (por defecto, disponible). */
+  probe: FakeDatabaseProbe;
+  /** Corridas de procesos que lee `getHealth`. */
+  jobRuns: InMemoryJobRunRepository;
+  /** Procesos registrados que informa `getHealth` (por defecto, ninguno). */
+  jobRegistry: JobRegistry;
   logs: CapturedLog[];
   seedUser(options?: SeedUserOptions): Promise<User>;
   countUsers(): number;
@@ -61,6 +72,9 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
   const ids = new UuidGenerator();
   const clock = new FakeClock();
   const dummyHash = await hasher.hash('dummy-password-for-tests');
+  const probe = new FakeDatabaseProbe();
+  const jobRuns = new InMemoryJobRunRepository();
+  const jobRegistry = new JobRegistry();
 
   const logs: CapturedLog[] = [];
   const logger: Logger = {
@@ -74,6 +88,8 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),
+    getHealth: new GetHealth({ probe, runs: jobRuns, registry: jobRegistry, clock, systemStartedAt: clock.now() }),
+    peekSession: new PeekSession({ users, sessions, tokens, clock }),
     clock,
     logger,
     ...overrides,
@@ -99,6 +115,9 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
     deps,
     db,
     clock,
+    probe,
+    jobRuns,
+    jobRegistry,
     logs,
     seedUser,
     countUsers: () => users.countAll(),

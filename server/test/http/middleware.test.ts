@@ -122,6 +122,46 @@ describe('authMiddleware', () => {
     expect(calls).toEqual([]);
   });
 
+  // AC-01 / R-04: solo GET y HEAD /api/health exactos son públicos; cualquier variante exige sesión
+  it('test_health_variantes_de_ruta_no_autorizado_401', async () => {
+    const calls: string[] = [];
+    t.cleanup();
+    t = await createTestApp({
+      getHealth: {
+        execute: () => {
+          calls.push('getHealth');
+          return { status: 'ok', db: 'disponible', jobs: [] };
+        },
+      },
+    });
+
+    const exact = await request(t.app).get('/api/health');
+    expect(exact.status).toBe(200);
+    expect(calls).toEqual(['getHealth']);
+    calls.length = 0;
+
+    const trailing = await request(t.app).get('/api/health/');
+    const post = await request(t.app).post('/api/health').send({});
+    const upper = await request(t.app).get('/API/HEALTH');
+    const mixed = await request(t.app).get('/api/Health');
+    const headTrailing = await request(t.app).head('/api/health/');
+    const put = await request(t.app).put('/api/health').send({});
+    const sub = await request(t.app).get('/api/health/detalle');
+
+    for (const res of [trailing, post, upper, mixed, put, sub]) {
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: 'Sesión no válida' });
+    }
+    expect(headTrailing.status).toBe(401);
+    expect(calls).toEqual([]);
+  });
+
+  it('agregar /api/health a las rutas públicas no abre el resto de /api', async () => {
+    const res = await request(t.app).get('/api/auth/session');
+
+    expect(res.status).toBe(401);
+  });
+
   it('con sesión válida, una ruta /api inexistente responde 404', async () => {
     const cookie = await loginCookie();
 
