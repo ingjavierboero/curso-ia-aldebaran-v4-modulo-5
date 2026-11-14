@@ -11,3 +11,7 @@ mostrados al usuario en la conversación.
 - `test_health_fecha_invalida_registra_invalid_stored_date` inserta una fila real con `finished_at='zzz-no-es-fecha'` y desvía con `vi.spyOn` las lecturas de `t.jobRuns` (en memoria) a un `DrizzleJobRunRepository` sobre la base del testApp; el resto de los tests de lectura fallida simulan el fallo con un spy que lanza — orquestador (minimal) — 2026-11-14 — Block 2
 - `InvalidStoredDate` vive en `parseIsoDate.ts`, junto a quien la lanza — orquestador (minimal) — 2026-11-14 — Block 2
 - Deuda aceptada (WARN del arch-auditor): `health.test.ts` usa `vi.spyOn` sin `vi.restoreAllMocks()` en el `afterEach`; hoy aislado porque cada test crea su `t.jobRuns` — orquestador (minimal) — 2026-11-14 — Block 2
+- `test_banner_no_confirma_sesion_con_ok_ni_con_detalle` suma un control final (un "degradado" sin detalle que sí confirma una vez) para que el test discrimine y no pase trivialmente antes de implementar — orquestador (minimal) — 2026-11-14 — Block 3
+- Un rechazo de la confirmación con la consulta ya abortada también se descarta, igual que una resolución — orquestador (minimal) — 2026-11-14 — Block 3
+- Ante "degradado" sin detalle el banner no cambia hasta que vuelve la confirmación (AC-01); mientras tanto se ve lo último mostrado — orquestador (minimal) — 2026-11-14 — Block 3
+- Aceptado (WARN del arch-auditor, ya previsto en la spec): la navegación al login ante un 401 ocurre dentro de `request` y no se cancela si la consulta se abortó — orquestador (minimal) — 2026-11-14 — Block 3

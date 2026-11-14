@@ -15,9 +15,14 @@ describe('HomePage', () => {
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+    // "Degradado" sin detalle: el banner confirma la sesión (una vez, además del loader de `/`)
+    // y, con la sesión válida, nombra la base (FEAT-004).
+    await waitFor(() => { expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2); });
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Base de datos');
     expect(fetchMock.callsTo('GET', '/api/health')[0]?.init?.credentials).toBe('include');
+    expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2);
+    expect(fetchMock.callsTo('GET', '/api/auth/session')[1]?.init?.credentials).toBe('include');
   });
 
   // HomePage al cerrar sesión navega a /login

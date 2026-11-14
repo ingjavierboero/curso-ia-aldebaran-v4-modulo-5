@@ -13,6 +13,8 @@ export interface HealthJob {
   lastRunAt: string | null;
   lastOutcome: 'ok' | 'error' | null;
   late: boolean;
+  /** No se pudieron leer sus corridas: está degradado aunque la base responda. */
+  readFailed: boolean;
 }
 
 /**
