@@ -21,7 +21,14 @@ declare global {
  * Únicas rutas que cruzan sin sesión (FR-01). Comparación exacta de método y ruta completa:
  * cualquier variante (otro método, sufijo, mayúsculas) cae del lado de "exige sesión".
  */
-const PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'GET /api/setup/status', 'POST /api/setup/first-admin']);
+const PUBLIC_ROUTES = new Set([
+  'POST /api/auth/login',
+  'GET /api/setup/status',
+  'POST /api/setup/first-admin',
+  // FEAT-003 (R-04): el chequeo de salud; el detalle lo decide la ruta con `PeekSession`.
+  'GET /api/health',
+  'HEAD /api/health',
+]);
 
 export interface AuthMiddlewareDeps {
   authenticateSession: Pick<AuthenticateSession, 'execute'>;

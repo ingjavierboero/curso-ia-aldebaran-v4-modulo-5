@@ -1,19 +1,25 @@
 // Composition root: el único lugar que arma las implementaciones concretas.
 import { randomUUID } from 'node:crypto';
+import { constants as osConstants } from 'node:os';
 import { AuthenticateSession } from './application/auth/AuthenticateSession.js';
 import { GetSetupStatus } from './application/auth/GetSetupStatus.js';
 import { Login } from './application/auth/Login.js';
 import { Logout } from './application/auth/Logout.js';
+import { PeekSession } from './application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from './application/auth/RegisterFirstAdmin.js';
+import { GetHealth } from './application/health/GetHealth.js';
+import { JobRegistry } from './application/health/JobRegistry.js';
 import { Argon2PasswordHasher } from './infrastructure/auth/Argon2PasswordHasher.js';
 import { CryptoSessionTokenGenerator } from './infrastructure/auth/CryptoSessionTokenGenerator.js';
 import { UuidGenerator } from './infrastructure/auth/UuidGenerator.js';
 import { SystemClock } from './infrastructure/clock/SystemClock.js';
 import { createDb, resolveDatabasePath } from './infrastructure/db/client.js';
+import { DrizzleJobRunRepository } from './infrastructure/db/DrizzleJobRunRepository.js';
 import { DrizzleSessionRepository } from './infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from './infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from './infrastructure/db/DrizzleUserRepository.js';
 import { migrate } from './infrastructure/db/migrate.js';
+import { SqliteDatabaseProbe } from './infrastructure/db/SqliteDatabaseProbe.js';
 import { createApp } from './infrastructure/http/app.js';
 import { createJsonLogger } from './infrastructure/http/authLog.js';
 import { parsePort } from './infrastructure/http/parsePort.js';
@@ -40,12 +46,23 @@ async function main(): Promise<void> {
   // R-02: hash de una contraseña aleatoria, contra el que se verifica cuando el email no existe.
   const dummyHash = await hasher.hash(randomUUID());
 
+  // FEAT-003: hoy no hay procesos registrados; los que vengan se registran acá.
+  const jobRegistry = new JobRegistry();
+  const jobRuns = new DrizzleJobRunRepository(db);
+  // ADR-005: conexión dedicada de solo lectura para el sondeo; se cierra al terminar el proceso.
+  const probe = new SqliteDatabaseProbe(databasePath);
+  closeOnExit(probe);
+  // Después de fijar TZ: el arranque desde el que se mide el atraso de un proceso sin corridas.
+  const systemStartedAt = clock.now();
+
   const app = createApp({
     login: new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash }),
     logout: new Logout({ sessions, tokens }),
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),
+    getHealth: new GetHealth({ probe, runs: jobRuns, registry: jobRegistry, clock, systemStartedAt }),
+    peekSession: new PeekSession({ users, sessions, tokens, clock }),
     clock,
     logger,
   });
@@ -57,6 +74,23 @@ async function main(): Promise<void> {
     }
     logger.info({ event: 'server_started', port, database: databasePath, at: clock.now().toISOString() });
   });
+}
+
+/**
+ * Cierra el sondeo al salir. SIGINT/SIGTERM terminan el proceso con el código convencional
+ * (128 + número de señal), que es lo que hacían antes de tener handler; `exit` cierra la conexión.
+ */
+function closeOnExit(probe: SqliteDatabaseProbe): void {
+  process.once('exit', () => {
+    try {
+      probe.close();
+    } catch {
+      // saliendo: no hay nada más que hacer con una conexión que no cierra
+    }
+  });
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(signal, () => process.exit(128 + osConstants.signals[signal]));
+  }
 }
 
 main().catch((err: unknown) => {

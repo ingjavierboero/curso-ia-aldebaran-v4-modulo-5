@@ -6,3 +6,21 @@ export interface PublicUser {
   role: 'admin' | 'editor' | 'consulta';
   status: 'activo' | 'inactivo';
 }
+
+/** Estado de un proceso automático, tal como lo informa `GET /api/health` a un usuario con sesión. */
+export interface HealthJob {
+  name: string;
+  lastRunAt: string | null;
+  lastOutcome: 'ok' | 'error' | null;
+  late: boolean;
+}
+
+/**
+ * Respuesta de `GET /api/health` (200 u 503). Sin sesión válida, o con la base caída, llega solo
+ * `status`; con sesión llegan además `db` y `jobs`.
+ */
+export interface HealthResponse {
+  status: 'ok' | 'degradado';
+  db?: 'disponible' | 'no_disponible';
+  jobs?: HealthJob[];
+}

@@ -4,13 +4,16 @@ import type { AuthenticateSession } from '../../application/auth/AuthenticateSes
 import type { GetSetupStatus } from '../../application/auth/GetSetupStatus.js';
 import type { Login } from '../../application/auth/Login.js';
 import type { Logout } from '../../application/auth/Logout.js';
+import type { PeekSession } from '../../application/auth/PeekSession.js';
 import type { RegisterFirstAdmin } from '../../application/auth/RegisterFirstAdmin.js';
+import type { GetHealth } from '../../application/health/GetHealth.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { createAuthMiddleware } from './authMiddleware.js';
 import type { Logger } from './authLog.js';
 import { createErrorHandler } from './errorHandler.js';
 import { requireJson } from './requireJson.js';
 import { authRoutes } from './routes/auth.js';
+import { healthRoutes } from './routes/health.js';
 import { setupRoutes } from './routes/setup.js';
 import { defaultSecureCookie } from './sessionCookie.js';
 
@@ -21,6 +24,9 @@ export interface AppDeps {
   authenticateSession: Pick<AuthenticateSession, 'execute'>;
   registerFirstAdmin: Pick<RegisterFirstAdmin, 'execute'>;
   getSetupStatus: Pick<GetSetupStatus, 'execute'>;
+  getHealth: Pick<GetHealth, 'execute'>;
+  /** Valida la sesión del chequeo de salud sin renovarla (R-06). */
+  peekSession: Pick<PeekSession, 'execute'>;
   clock: Clock;
   logger: Logger;
   /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
@@ -49,9 +55,9 @@ export function createApp(deps: AppDeps): Express {
 
   // R-07: el 415 va antes de parsear el body y antes de cualquier caso de uso.
   app.use('/api', noStore, requireJson, express.json({ limit: '10kb' }));
-  // FR-01: deny-by-default sobre todo /api salvo las tres rutas públicas.
+  // FR-01: deny-by-default sobre todo /api salvo las rutas públicas (`PUBLIC_ROUTES`).
   app.use('/api', createAuthMiddleware(deps));
-  app.use('/api', authRoutes({ ...deps, secureCookie }), setupRoutes(deps));
+  app.use('/api', authRoutes({ ...deps, secureCookie }), setupRoutes(deps), healthRoutes(deps));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'No encontrado' });

@@ -63,6 +63,54 @@ describe('base de datos', () => {
     expect(() => insert.run('u3', 'a@b.co', 'editor')).toThrow(/UNIQUE/);
   });
 
+  // migrate crea job_runs con NOT NULL en todas las columnas y el índice (job_name, outcome, finished_at)
+  it('migrate crea la tabla job_runs con su índice compuesto', () => {
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+
+    migrate(db);
+
+    const sqlite = db.$client;
+    const columns = sqlite.prepare("PRAGMA table_info('job_runs')").all() as {
+      name: string; type: string; notnull: number; pk: number;
+    }[];
+    expect(columns.map((c) => [c.name, c.type.toLowerCase(), c.notnull, c.pk])).toEqual([
+      ['id', 'text', 1, 1],
+      ['job_name', 'text', 1, 0],
+      ['started_at', 'text', 1, 0],
+      ['finished_at', 'text', 1, 0],
+      ['outcome', 'text', 1, 0],
+    ]);
+
+    const indexes = sqlite.prepare("PRAGMA index_list('job_runs')").all() as { name: string; unique: number }[];
+    const composite = indexes.find((i) => i.name === 'job_runs_job_outcome_finished_idx');
+    expect(composite?.unique).toBe(0);
+    const indexCols = (sqlite.prepare("PRAGMA index_info('job_runs_job_outcome_finished_idx')").all() as {
+      name: string;
+    }[]).map((c) => c.name);
+    expect(indexCols).toEqual(['job_name', 'outcome', 'finished_at']);
+  });
+
+  // AC-09: la base rechaza por CHECK un outcome fuera de 'ok'/'error'
+  it('test_outcome_invalido_rechazado_por_la_base', () => {
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+
+    migrate(db);
+
+    const sqlite = db.$client;
+    const insert = sqlite.prepare(
+      "INSERT INTO job_runs (id, job_name, started_at, finished_at, outcome) VALUES (?, 'facturacion', '2026-11-14T10:00:00.000Z', '2026-11-14T10:00:01.000Z', ?)",
+    );
+    insert.run('r-ok', 'ok');
+    insert.run('r-error', 'error');
+    expect(() => insert.run('r-1', 'fallido')).toThrow(/CHECK/);
+    expect(() => insert.run('r-2', 'OK')).toThrow(/CHECK/);
+    expect(() => insert.run('r-3', '')).toThrow(/CHECK/);
+    expect(() => insert.run('r-4', null)).toThrow(/NOT NULL/);
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM job_runs').get()).toEqual({ n: 2 });
+  });
+
   // createDb crea el directorio faltante con permisos 0700 y el archivo con 0600
   it('test_createdb_crea_directorio_0700_y_archivo_0600', () => {
     const dir = join(workDir, 'nested', 'data');

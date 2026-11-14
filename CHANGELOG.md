@@ -13,6 +13,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - [FEAT-001] Scaffolding del monorepo (`server/` y `web/`) y base SQLite con migraciones de Drizzle.
 - [FEAT-002] CI en GitHub Actions en cada pull request: `npm ci`, lint, typecheck y tests, con permisos de solo lectura, sin secretos y actions fijadas por SHA.
 - [FEAT-002] Linter oxlint con información de tipos (`npm run lint`), con reglas equivalentes a `strict-type-checked` que bloquean el CI.
+- [FEAT-003] Consulta de salud `GET`/`HEAD /api/health`: sin sesión responde solo el estado general (200 ok / 503 degradado); con sesión, el detalle de la base y de cada proceso automático. Con la base caída responde en menos de 1 s y sin validar la sesión.
+- [FEAT-003] Registro de corridas de procesos automáticos (tabla `job_runs`): un proceso cuenta como atrasado tras más de 2 intervalos sin corrida exitosa, y una última corrida con error también degrada el estado.
+- [FEAT-003] Banner en la pantalla principal que nombra lo degradado (base de datos o procesos) y se actualiza cada 60 s. La consulta no renueva la sesión.
 
 ### Changed
 - [FIX-001] La pantalla de login se titula "Iniciar sesión en Aldebaran".
