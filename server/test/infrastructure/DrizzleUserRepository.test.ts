@@ -126,6 +126,39 @@ describe('DrizzleUserRepository', () => {
     });
   });
 
+  // FEAT-007 (AC-03): updatePasswordHash escribe solo password_hash del usuario con ese id
+  it('test_drizzle_update_password_hash_solo_cambia_el_hash', () => {
+    const repo = new DrizzleUserRepository(t.db);
+    const original = makeUser({ id: 'u-1', email: 'admin@empresa.com', role: 'editor' });
+    repo.insert(original);
+    repo.insert(makeUser({ id: 'u-2', email: 'otro@empresa.com', name: 'Bruno' }));
+
+    // nombre, email, perfil y estado distintos en la entidad: no deben persistirse
+    const changed = new User({
+      id: 'u-1',
+      name: 'Otro Nombre',
+      email: Email.create('cambiado@empresa.com'),
+      role: 'admin',
+      status: 'inactivo',
+      passwordHash: '$argon2id$nuevo',
+      createdAt: new Date('2030-01-01T00:00:00.000Z'),
+    });
+    repo.updatePasswordHash(changed);
+
+    const stored = repo.findById('u-1');
+    expect(stored?.passwordHash).toBe('$argon2id$nuevo');
+    expect(stored?.name).toBe('Ana Pérez');
+    expect(stored?.email.value).toBe('admin@empresa.com');
+    expect(stored?.role).toBe('editor');
+    expect(stored?.status).toBe('activo');
+    expect(stored?.createdAt.toISOString()).toBe('2026-11-04T12:34:56.789Z');
+    // el otro usuario no cambia
+    expect(repo.findById('u-2')?.passwordHash).toBe('$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA');
+    // un id inexistente no lanza ni crea nada
+    expect(() => { repo.updatePasswordHash(makeUser({ id: 'no-existe', email: 'x@empresa.com' })); }).not.toThrow();
+    expect(repo.countAll()).toBe(2);
+  });
+
   it('listAll devuelve Activos e Inactivos ordenados por nombre', () => {
     const repo = new DrizzleUserRepository(t.db);
     repo.insert(makeUser({ id: 'u-1', name: 'Carla', email: 'carla@empresa.com' }));

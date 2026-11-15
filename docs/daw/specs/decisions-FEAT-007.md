@@ -1,0 +1,9 @@
+# Decisions FEAT-007
+
+- D-01 pantalla "Mi perfil" en `/perfil` para los tres perfiles, con nombre, email y perfil en solo lectura — usuario — 2026-11-15 — DEFINE.
+- D-02 contraseña actual incorrecta: solo error y log, sin límite de intentos (R-01 aceptado en el threat model) — usuario — 2026-11-15 — DEFINE.
+- D-03 la nueva debe ser distinta de la actual y el formulario pide repetirla — usuario — 2026-11-15 — DEFINE.
+- D-04 un solo ticket pese a 15 AC (W-PRD-06), partido en 3 bloques en la spec — usuario — 2026-11-15 — DEFINE.
+- Revisión de PLAN (impact scan 4 gaps; arch-auditor F-01, W-01–W-10) incorporada a la spec: `assertChanged` en `PasswordPolicy`, `IncorrectCurrentPassword` en `application/auth`, `User.withPasswordHash` + `updatePasswordHash(user)`, `users` sin transacción para la primera lectura, control de dueño de la sesión, body parseado dentro del `try` del log, `sessionContext.ts` compartido, `newPassword` sin tope de forma en la ruta, `ROLE_LABELS` y `sessionLoader` reutilizados — asistente — 2026-11-15 — PLAN.
+- Supuestos de implementación aceptados por los revisores: `execute` recibe `Actor` de `application/shared`; usuario Inactivo o inexistente en el paso 2 lanza `Unauthenticated` sin verificar ni abrir la transacción (test extra); `updatePasswordHash` con id inexistente no hace nada, igual que `update` — asistente — 2026-11-15 — Block 1.
+- Evidencia TDD de Block 1: los 11 tests del caso de uso fallaron por el símbolo faltante (`ctx.changeOwnPassword`), no por aserción; el verificador lo aceptó (WARN) y pidió esqueleto "not implemented" en los bloques siguientes — asistente — 2026-11-15 — Block 1.

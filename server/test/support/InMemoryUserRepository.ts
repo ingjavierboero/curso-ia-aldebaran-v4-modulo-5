@@ -52,6 +52,13 @@ export class InMemoryUserRepository implements UserRepository {
     this.rows.set(user.id, user);
   }
 
+  /** Igual que un UPDATE de `password_hash` por id: solo cambia el hash; si no existe, no hace nada. */
+  updatePasswordHash(user: User): void {
+    const current = this.rows.get(user.id);
+    if (!current) return;
+    this.rows.set(user.id, current.withPasswordHash(user.passwordHash));
+  }
+
   all(): User[] {
     return [...this.rows.values()];
   }

@@ -57,6 +57,11 @@ export class User {
     return new User({ ...this.toProps(), name: profile.name, email: profile.email, role: profile.role });
   }
 
+  /** Un usuario nuevo con otro hash de contraseña (FEAT-007); el original no cambia. */
+  withPasswordHash(passwordHash: string): User {
+    return new User({ ...this.toProps(), passwordHash });
+  }
+
   /** Un usuario nuevo en estado Inactivo (FR-07). */
   deactivated(): User {
     return new User({ ...this.toProps(), status: 'inactivo' });

@@ -7,6 +7,15 @@ export class InvalidCredentials extends Error {
   }
 }
 
+/** Al cambiar la propia contraseña, la actual no verifica (FEAT-007, FR-04). */
+export class IncorrectCurrentPassword extends Error {
+  override readonly name = 'IncorrectCurrentPassword';
+
+  constructor(message = 'La contraseña actual es incorrecta') {
+    super(message);
+  }
+}
+
 export class Unauthenticated extends Error {
   override readonly name = 'Unauthenticated';
 

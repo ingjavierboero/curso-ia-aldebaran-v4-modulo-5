@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { Session } from '../../domain/auth/Session.js';
 import type { SessionRepository } from '../../domain/auth/SessionRepository.js';
 import type { SqliteHandle } from './handle.js';
@@ -39,6 +39,13 @@ export class DrizzleSessionRepository implements SessionRepository {
 
   deleteByUserId(userId: string): number {
     return this.db.delete(sessions).where(eq(sessions.userId, userId)).run().changes;
+  }
+
+  deleteByUserIdExcept(userId: string, keepSessionId: string): number {
+    return this.db
+      .delete(sessions)
+      .where(and(eq(sessions.userId, userId), ne(sessions.id, keepSessionId)))
+      .run().changes;
   }
 }
 
