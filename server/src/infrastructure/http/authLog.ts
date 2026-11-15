@@ -27,7 +27,8 @@ export function createJsonLogger(write: (line: string) => void = (line) => proce
 }
 
 export type AuthEvent = 'login' | 'first_admin' | 'password_change';
-export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'wrong_current' | 'error';
+/** `blocked`: la compuerta del límite de intentos rechazó el pedido con 429 (FEAT-009). */
+export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'wrong_current' | 'error' | 'blocked';
 
 /** El email normalizado por `Email.create`, o `null` si no es un email válido (`InvalidEmail`). */
 function loggableEmail(rawEmail: string): string | null {

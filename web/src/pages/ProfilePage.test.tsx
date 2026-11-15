@@ -135,4 +135,23 @@ describe('ProfilePage', () => {
     expect(screen.queryByText('La contraseña se cambió')).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/perfil');
   });
+
+  // 429 por demasiados intentos: muestra el mensaje del server y el formulario conserva lo ingresado (AC-13).
+  it('test_profile_page_bloqueo_rechazado_muestra_mensaje', async () => {
+    const fetchMock = mockFetch(profileRoutes({ status: 429, body: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' } }));
+    const { router, user } = await openProfile();
+
+    await user.type(screen.getByLabelText('Contraseña actual'), CURRENT);
+    await user.type(screen.getByLabelText('Contraseña nueva'), NEXT);
+    await user.type(screen.getByLabelText('Repetir contraseña nueva'), NEXT);
+    await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+
+    expect(await screen.findByText('Demasiados intentos. Probá de nuevo en 15 minutos.')).toBeInTheDocument();
+    expect(fetchMock.callsTo('POST', '/api/auth/password')).toHaveLength(1);
+    expect(screen.queryByText('La contraseña se cambió')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Contraseña actual')).toHaveValue(CURRENT);
+    expect(screen.getByLabelText('Contraseña nueva')).toHaveValue(NEXT);
+    expect(screen.getByLabelText('Repetir contraseña nueva')).toHaveValue(NEXT);
+    expect(router.state.location.pathname).toBe('/perfil');
+  });
 });
