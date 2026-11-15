@@ -1,8 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-
-export const USER_ROLES = ['admin', 'editor', 'consulta'] as const;
-export const USER_STATUSES = ['activo', 'inactivo'] as const;
+import { USER_ROLES, USER_STATUSES } from '../../domain/user/User.js';
 
 export const users = sqliteTable(
   'users',

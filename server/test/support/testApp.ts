@@ -7,6 +7,11 @@ import { PeekSession } from '../../src/application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
 import { GetHealth } from '../../src/application/health/GetHealth.js';
 import { JobRegistry } from '../../src/application/health/JobRegistry.js';
+import { CreateUser } from '../../src/application/user/CreateUser.js';
+import { DeactivateUser } from '../../src/application/user/DeactivateUser.js';
+import { ListUsers } from '../../src/application/user/ListUsers.js';
+import { ReactivateUser } from '../../src/application/user/ReactivateUser.js';
+import { UpdateUser } from '../../src/application/user/UpdateUser.js';
 import { Email } from '../../src/domain/user/Email.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
 import { Argon2PasswordHasher } from '../../src/infrastructure/auth/Argon2PasswordHasher.js';
@@ -99,6 +104,11 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
       log: createHealthEventLog(logger, clock),
     }),
     peekSession: new PeekSession({ users, sessions, tokens, clock }),
+    listUsers: new ListUsers({ users }),
+    createUser: new CreateUser({ uow, hasher, ids, clock }),
+    updateUser: new UpdateUser({ uow }),
+    deactivateUser: new DeactivateUser({ uow }),
+    reactivateUser: new ReactivateUser({ uow }),
     clock,
     logger,
     ...overrides,

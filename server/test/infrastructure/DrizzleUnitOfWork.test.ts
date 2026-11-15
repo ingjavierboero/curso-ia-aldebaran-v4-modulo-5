@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Email } from '../../src/domain/user/Email.js';
+import { Session } from '../../src/domain/auth/Session.js';
 import { User } from '../../src/domain/user/User.js';
+import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { createTestDb, type TestDb } from '../support/sqliteTestDb.js';
+
+function makeSession(id: string, tokenHash: string): Session {
+  const at = new Date('2026-11-04T12:00:00.000Z');
+  return new Session({ id, userId: 'u-1', tokenHash, createdAt: at, lastActivityAt: at });
+}
 
 function makeUser(id: string, email: string): User {
   return new User({
@@ -58,6 +65,30 @@ describe('DrizzleUnitOfWork', () => {
     expect(outside.countAll()).toBe(1);
     expect(outside.findById('u-1')).toBeNull();
     expect(outside.findById('u-0')).not.toBeNull();
+    expect(t.db.$client.inTransaction).toBe(false);
+  });
+
+  // FEAT-006 (FR-07): la baja y el borrado de sesiones van en la misma transacción
+  it('test_drizzle_uow_error_revierte_baja_y_sesiones', () => {
+    new DrizzleUserRepository(t.db).insert(makeUser('u-1', 'a@empresa.com'));
+    const outsideSessions = new DrizzleSessionRepository(t.db);
+    outsideSessions.insert(makeSession('s-1', 'a'.repeat(64)));
+    outsideSessions.insert(makeSession('s-2', 'b'.repeat(64)));
+    const uow = new DrizzleUnitOfWork(t.db);
+    const boom = new Error('boom');
+
+    expect(() =>
+      uow.run(({ users, sessions }) => {
+        const user = users.findById('u-1') as User;
+        users.update(user.deactivated());
+        expect(sessions.deleteByUserId('u-1')).toBe(2);
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    expect(new DrizzleUserRepository(t.db).findById('u-1')?.status).toBe('activo');
+    expect(outsideSessions.findByTokenHash('a'.repeat(64))?.id).toBe('s-1');
+    expect(outsideSessions.findByTokenHash('b'.repeat(64))?.id).toBe('s-2');
     expect(t.db.$client.inTransaction).toBe(false);
   });
 

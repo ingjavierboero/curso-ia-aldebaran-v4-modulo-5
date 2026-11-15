@@ -7,6 +7,11 @@ import type { Logout } from '../../application/auth/Logout.js';
 import type { PeekSession } from '../../application/auth/PeekSession.js';
 import type { RegisterFirstAdmin } from '../../application/auth/RegisterFirstAdmin.js';
 import type { GetHealth } from '../../application/health/GetHealth.js';
+import type { CreateUser } from '../../application/user/CreateUser.js';
+import type { DeactivateUser } from '../../application/user/DeactivateUser.js';
+import type { ListUsers } from '../../application/user/ListUsers.js';
+import type { ReactivateUser } from '../../application/user/ReactivateUser.js';
+import type { UpdateUser } from '../../application/user/UpdateUser.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { createAuthMiddleware } from './authMiddleware.js';
 import type { Logger } from './authLog.js';
@@ -15,6 +20,7 @@ import { requireJson } from './requireJson.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { setupRoutes } from './routes/setup.js';
+import { usersRoutes } from './routes/users.js';
 import { defaultSecureCookie } from './sessionCookie.js';
 
 /** Dependencias de la app: casos de uso, reloj y logger. Las arma el composition root (`main.ts`). */
@@ -27,6 +33,12 @@ export interface AppDeps {
   getHealth: Pick<GetHealth, 'execute'>;
   /** Valida la sesión del chequeo de salud sin renovarla (R-06). */
   peekSession: Pick<PeekSession, 'execute'>;
+  /** Gestión de usuarios (FEAT-006): cada caso de uso autoriza al `Actor` que recibe. */
+  listUsers: Pick<ListUsers, 'execute'>;
+  createUser: Pick<CreateUser, 'execute'>;
+  updateUser: Pick<UpdateUser, 'execute'>;
+  deactivateUser: Pick<DeactivateUser, 'execute'>;
+  reactivateUser: Pick<ReactivateUser, 'execute'>;
   clock: Clock;
   logger: Logger;
   /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
@@ -57,7 +69,7 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api', noStore, requireJson, express.json({ limit: '10kb' }));
   // FR-01: deny-by-default sobre todo /api salvo las rutas públicas (`PUBLIC_ROUTES`).
   app.use('/api', createAuthMiddleware(deps));
-  app.use('/api', authRoutes({ ...deps, secureCookie }), setupRoutes(deps), healthRoutes(deps));
+  app.use('/api', authRoutes({ ...deps, secureCookie }), setupRoutes(deps), healthRoutes(deps), usersRoutes(deps));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'No encontrado' });

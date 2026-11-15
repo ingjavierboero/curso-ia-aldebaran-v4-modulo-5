@@ -1,6 +1,7 @@
 import type { PasswordHasher } from '../../domain/auth/PasswordHasher.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { Email } from '../../domain/user/Email.js';
+import { EmailAlreadyInUse } from '../../domain/user/errors.js';
 import { PasswordPolicy } from '../../domain/user/PasswordPolicy.js';
 import { parseUserName, User } from '../../domain/user/User.js';
 import type { IdGenerator } from '../shared/IdGenerator.js';
@@ -51,7 +52,14 @@ export class RegisterFirstAdmin {
         passwordHash,
         createdAt: clock.now(),
       });
-      users.insert(admin);
+      try {
+        users.insert(admin);
+      } catch (err) {
+        // El UNIQUE de email resolvió una carrera que el conteo no vio: para este caso de uso,
+        // significa que el primer Admin ya existe.
+        if (err instanceof EmailAlreadyInUse) throw new FirstAdminAlreadyExists();
+        throw err;
+      }
       return admin;
     });
 

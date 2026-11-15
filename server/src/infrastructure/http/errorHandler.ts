@@ -2,7 +2,16 @@ import { DrizzleQueryError } from 'drizzle-orm/errors';
 import type { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
 import { FirstAdminAlreadyExists, InvalidCredentials, Unauthenticated } from '../../application/auth/errors.js';
 import type { Clock } from '../../domain/shared/Clock.js';
-import { InvalidEmail, InvalidName, WeakPassword } from '../../domain/user/errors.js';
+import { Forbidden } from '../../domain/auth/errors.js';
+import {
+  EmailAlreadyInUse,
+  InvalidEmail,
+  InvalidName,
+  InvalidRole,
+  LastActiveAdmin,
+  UserNotFound,
+  WeakPassword,
+} from '../../domain/user/errors.js';
 import type { Logger, LogRecord } from './authLog.js';
 import { InvalidBody } from './body.js';
 import { clearSessionCookie } from './sessionCookie.js';
@@ -56,7 +65,13 @@ function errorDetail(err: unknown): LogRecord {
  */
 export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler {
   return (err: unknown, req: Request, res: Response, _next: NextFunction): void => {
-    if (err instanceof InvalidBody || err instanceof WeakPassword || err instanceof InvalidEmail || err instanceof InvalidName) {
+    if (
+      err instanceof InvalidBody ||
+      err instanceof WeakPassword ||
+      err instanceof InvalidEmail ||
+      err instanceof InvalidName ||
+      err instanceof InvalidRole
+    ) {
       res.status(400).json({ error: err.message });
       return;
     }
@@ -76,7 +91,16 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       res.status(401).json({ error: 'Sesión no válida' });
       return;
     }
-    if (err instanceof FirstAdminAlreadyExists) {
+    // FR-11: sin ningún dato de usuarios, solo el mensaje.
+    if (err instanceof Forbidden) {
+      res.status(403).json({ error: err.message });
+      return;
+    }
+    if (err instanceof UserNotFound) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    if (err instanceof FirstAdminAlreadyExists || err instanceof EmailAlreadyInUse || err instanceof LastActiveAdmin) {
       res.status(409).json({ error: err.message });
       return;
     }

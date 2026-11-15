@@ -1,8 +1,10 @@
 import { createBrowserRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router';
 import { getSession, getSetupStatus, setUnauthorizedHandler } from './api/authApi';
+import type { PublicUser } from './api/types';
 import { FirstAdminPage } from './pages/FirstAdminPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { UsersPage } from './pages/UsersPage';
 import { useAuthStore } from './store/authStore';
 
 /**
@@ -20,6 +22,22 @@ async function homeLoader() {
     useAuthStore.getState().setAnon();
     return redirect('/login');
   }
+}
+
+/**
+ * `/usuarios`: exige sesión y perfil Admin (FEAT-006, FR-13). Sin sesión o sin servidor, a `/login`
+ * (falla cerrado); con otro perfil, a `/`.
+ */
+async function usersLoader() {
+  let user: PublicUser;
+  try {
+    user = await getSession({ navigateOnUnauthorized: false });
+  } catch {
+    useAuthStore.getState().setAnon();
+    return redirect('/login');
+  }
+  useAuthStore.getState().setUser(user);
+  return user.role === 'admin' ? null : redirect('/');
 }
 
 /** `/login`: sistema vacío → `/setup`; ya hay sesión → `/`. Si el servidor no responde, se muestra el login. */
@@ -51,6 +69,7 @@ async function setupLoader() {
 
 export const routes: RouteObject[] = [
   { path: '/', loader: homeLoader, Component: HomePage },
+  { path: '/usuarios', loader: usersLoader, Component: UsersPage },
   { path: '/login', loader: loginLoader, Component: LoginPage },
   { path: '/setup', loader: setupLoader, Component: FirstAdminPage },
   { path: '*', loader: () => redirect('/') },

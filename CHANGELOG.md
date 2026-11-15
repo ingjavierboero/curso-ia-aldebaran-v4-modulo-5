@@ -17,6 +17,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - [FEAT-003] Registro de corridas de procesos automáticos (tabla `job_runs`): un proceso cuenta como atrasado tras más de 2 intervalos sin corrida exitosa, y una última corrida con error también degrada el estado.
 - [FEAT-003] Banner en la pantalla principal que nombra lo degradado (base de datos o procesos) y se actualiza cada 60 s. La consulta no renueva la sesión.
 - [FEAT-005] Dependabot (`.github/dependabot.yml`): una vez por semana propone las actualizaciones de las dependencias npm (raíz, cubre `server/` y `web/`) y de las acciones del CI, agrupadas en un solo PR por ecosistema y con como máximo 1 abierto a la vez. Las acciones siguen fijadas por SHA.
+- [FEAT-006] Gestión de usuarios para Admin (`/usuarios` y `/api/users`): listado de usuarios Activos e Inactivos, alta con nombre, email, perfil y contraseña inicial, modificación de nombre, email y perfil, baja (cierra todas sus sesiones) y reactivación. El email no se repite sin distinguir mayúsculas y nunca queda el sistema sin un Admin Activo, tampoco ante acciones simultáneas.
+- [FEAT-006] Permisos por perfil (Admin, Editor, Consulta) con autorización deny-by-default en el dominio: solo Admin ve y gestiona usuarios (Editor y Consulta reciben 403 sin datos), y un cambio de perfil o una baja rigen desde la siguiente acción del usuario.
 
 ### Changed
 - [FIX-001] La pantalla de login se titula "Iniciar sesión en Aldebaran".
