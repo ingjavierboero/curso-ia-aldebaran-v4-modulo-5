@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PeekSession } from '../../src/application/auth/PeekSession.js';
 import { GetHealth } from '../../src/application/health/GetHealth.js';
 import { CryptoSessionTokenGenerator } from '../../src/infrastructure/auth/CryptoSessionTokenGenerator.js';
+import { DrizzleJobRunRepository } from '../../src/infrastructure/db/DrizzleJobRunRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { schema } from '../../src/infrastructure/db/schema.js';
@@ -12,6 +13,7 @@ import { JobDefinition } from '../../src/domain/health/JobDefinition.js';
 import { JobRun } from '../../src/domain/health/JobRun.js';
 import { SqliteDatabaseProbe } from '../../src/infrastructure/db/SqliteDatabaseProbe.js';
 import { createApp } from '../../src/infrastructure/http/app.js';
+import { RecordingHealthEventLog } from '../support/RecordingHealthEventLog.js';
 import { type TestApp, createTestApp, sessionCookieFrom } from '../support/testApp.js';
 
 const HOUR = 60 * 60 * 1000;
@@ -80,7 +82,7 @@ describe('GET /api/health', () => {
     expect(res.body).toEqual({
       status: 'ok',
       db: 'disponible',
-      jobs: [{ name: 'facturacion', lastRunAt: finishedAt.toISOString(), lastOutcome: 'ok', late: false }],
+      jobs: [{ name: 'facturacion', lastRunAt: finishedAt.toISOString(), lastOutcome: 'ok', late: false, readFailed: false }],
     });
     expect(res.headers['set-cookie']).toBeUndefined();
   });
@@ -96,7 +98,7 @@ describe('GET /api/health', () => {
     expect(res.body).toEqual({
       status: 'degradado',
       db: 'disponible',
-      jobs: [{ name: 'casilla', lastRunAt: null, lastOutcome: null, late: true }],
+      jobs: [{ name: 'casilla', lastRunAt: null, lastOutcome: null, late: true, readFailed: false }],
     });
   });
 
@@ -192,6 +194,7 @@ describe('GET /api/health', () => {
         registry: t.jobRegistry,
         clock: t.clock,
         systemStartedAt: t.clock.now(),
+        log: new RecordingHealthEventLog(),
       }),
     });
     const locker = t.db.$client;
@@ -240,6 +243,7 @@ describe('GET /api/health', () => {
         registry: t.jobRegistry,
         clock: t.clock,
         systemStartedAt: t.clock.now(),
+        log: new RecordingHealthEventLog(),
       }),
       peekSession: new PeekSession({
         users: new DrizzleUserRepository(sharedDb),
@@ -285,6 +289,118 @@ describe('GET /api/health', () => {
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ status: 'degradado' });
     expect(peeks).toBe(0);
+  });
+});
+
+/** Hace que la lectura de las corridas de `jobName` falle con `err`; los demás procesos leen normal. */
+function failReadsOf(jobName: string, err: unknown): void {
+  const findLatest = t.jobRuns.findLatest.bind(t.jobRuns);
+  const findLatestSuccess = t.jobRuns.findLatestSuccess.bind(t.jobRuns);
+  vi.spyOn(t.jobRuns, 'findLatest').mockImplementation((name) => {
+    if (name === jobName) throw err;
+    return findLatest(name);
+  });
+  vi.spyOn(t.jobRuns, 'findLatestSuccess').mockImplementation((name) => {
+    if (name === jobName) throw err;
+    return findLatestSuccess(name);
+  });
+}
+
+const SECRET_IN_ERROR = 'SQLITE_CORRUPT: valor-guardado-secreto';
+
+describe('GET /api/health con lectura de corridas fallida (FEAT-004)', () => {
+  // AC-06 / AC-07: 503, base disponible, solo el proceso que falló con readFailed
+  it('test_health_lectura_fallida_responde_503_con_read_failed', async () => {
+    const cookie = await loginCookie();
+    const finishedAt = seedFacturacion('ok');
+    t.jobRegistry.register(new JobDefinition({ name: 'casilla', intervalMs: HOUR }));
+    failReadsOf('casilla', new Error(SECRET_IN_ERROR));
+
+    const res = await request(t.app).get('/api/health').set('Cookie', cookie);
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      status: 'degradado',
+      db: 'disponible',
+      jobs: [
+        { name: 'facturacion', lastRunAt: finishedAt.toISOString(), lastOutcome: 'ok', late: false, readFailed: false },
+        { name: 'casilla', lastRunAt: null, lastOutcome: null, late: false, readFailed: true },
+      ],
+    });
+  });
+
+  // AC-09 / NFR-02: con sesión, el texto del error no sale en la respuesta
+  it('test_health_lectura_fallida_respuesta_sin_texto_de_error', async () => {
+    const cookie = await loginCookie();
+    t.jobRegistry.register(new JobDefinition({ name: 'casilla', intervalMs: HOUR }));
+    failReadsOf('casilla', new Error(SECRET_IN_ERROR));
+
+    const res = await request(t.app).get('/api/health').set('Cookie', cookie);
+
+    expect(res.status).toBe(503);
+    expect(res.body).toHaveProperty('jobs', [
+      { name: 'casilla', lastRunAt: null, lastOutcome: null, late: false, readFailed: true },
+    ]);
+    expect(res.text).not.toContain('SQLITE');
+    expect(res.text).not.toContain('valor-guardado-secreto');
+    expect(res.text).not.toContain('error":');
+    const healthLogs = t.logs.filter((l) => l.record.event === 'health_job_read_failed');
+    expect(healthLogs).toHaveLength(1);
+    expect(JSON.stringify(healthLogs)).not.toContain('valor-guardado-secreto');
+  });
+
+  // AC-09 / NFR-02: sin sesión, solo el estado general
+  it('test_health_lectura_fallida_anonima_solo_status', async () => {
+    t.jobRegistry.register(new JobDefinition({ name: 'casilla', intervalMs: HOUR }));
+    failReadsOf('casilla', new Error(SECRET_IN_ERROR));
+
+    const res = await request(t.app).get('/api/health');
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: 'degradado' });
+    expect(Object.keys(res.body as object)).toEqual(['status']);
+    expect(res.text).not.toContain('casilla');
+    expect(res.text).not.toContain('valor-guardado-secreto');
+    expect(t.logs.filter((l) => l.record.event === 'health_job_read_failed')).toHaveLength(1);
+  });
+
+  // AC-08 / AC-11: una corrida con fecha ilegible en la base real se registra como InvalidStoredDate,
+  // sin el valor guardado ni datos de la sesión
+  it('test_health_fecha_invalida_registra_invalid_stored_date', async () => {
+    const cookie = await loginCookie();
+    t.jobRegistry.register(new JobDefinition({ name: 'facturacion', intervalMs: HOUR }));
+    t.db.$client
+      .prepare('INSERT INTO job_runs (id, job_name, started_at, finished_at, outcome) VALUES (?, ?, ?, ?, ?)')
+      .run('run-1', 'facturacion', '2026-11-04T11:00:00.000Z', 'zzz-no-es-fecha', 'ok');
+    // Las lecturas de `getHealth` van a la tabla `job_runs` de la base del test.
+    const stored = new DrizzleJobRunRepository(t.db);
+    vi.spyOn(t.jobRuns, 'findLatest').mockImplementation((name) => stored.findLatest(name));
+    vi.spyOn(t.jobRuns, 'findLatestSuccess').mockImplementation((name) => stored.findLatestSuccess(name));
+
+    const res = await request(t.app).get('/api/health').set('Cookie', cookie);
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      status: 'degradado',
+      db: 'disponible',
+      jobs: [{ name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false, readFailed: true }],
+    });
+    const healthLogs = t.logs.filter((l) => l.record.event === 'health_job_read_failed');
+    expect(healthLogs).toEqual([
+      {
+        level: 'error',
+        record: {
+          event: 'health_job_read_failed',
+          job: 'facturacion',
+          errorType: 'InvalidStoredDate',
+          at: t.clock.now().toISOString(),
+        },
+      },
+    ]);
+    const serialized = JSON.stringify(healthLogs);
+    expect(serialized).not.toContain('zzz-no-es-fecha');
+    expect(serialized).not.toContain(cookie.split('=')[1] as string);
+    expect(serialized).not.toContain('admin@empresa.com');
   });
 });
 

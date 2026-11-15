@@ -39,12 +39,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isHealthJob(value: unknown): value is HealthJob {
   if (!isRecord(value)) return false;
-  const { name, lastRunAt, lastOutcome, late } = value;
+  const { name, lastRunAt, lastOutcome, late, readFailed } = value;
   return (
     typeof name === 'string' &&
     (lastRunAt === null || typeof lastRunAt === 'string') &&
     (lastOutcome === null || lastOutcome === 'ok' || lastOutcome === 'error') &&
-    typeof late === 'boolean'
+    typeof late === 'boolean' &&
+    typeof readFailed === 'boolean'
   );
 }
 

@@ -26,11 +26,15 @@ export class ApiError extends Error {
   }
 }
 
-/** Fallo de red o 5xx: para la UI es lo mismo, el servidor no respondió como se esperaba. */
+/**
+ * Fallo de red o 5xx: para la UI es lo mismo, el servidor no respondió como se esperaba.
+ * `status` distingue los dos casos para quien lo necesite: el status del 5xx, o `null` si no hubo
+ * respuesta (fetch rechazado) o su body no se pudo leer.
+ */
 export class NetworkError extends Error {
   override readonly name = 'NetworkError';
 
-  constructor() {
+  constructor(readonly status: number | null = null) {
     super(NETWORK_ERROR_MESSAGE);
   }
 }
@@ -73,7 +77,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new NetworkError();
   }
 
-  if (response.status >= 500) throw new NetworkError();
+  if (response.status >= 500) throw new NetworkError(response.status);
 
   if (response.status === 401 && handleUnauthorized) {
     useAuthStore.getState().setAnon();

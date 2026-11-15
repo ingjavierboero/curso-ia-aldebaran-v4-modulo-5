@@ -1,6 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HEALTH_OK, deferred, mockFetch, type FetchMock } from '../test/fetchMock';
+import { setUnauthorizedHandler } from '../api/authApi';
+import { useAuthStore } from '../store/authStore';
+import { ANA, HEALTH_OK, SESSION_401, deferred, mockFetch, type FetchMock } from '../test/fetchMock';
 import { HealthBanner } from './HealthBanner';
 
 const DEGRADADO_CON_DETALLE = {
@@ -9,12 +11,17 @@ const DEGRADADO_CON_DETALLE = {
     status: 'degradado',
     db: 'disponible',
     jobs: [
-      { name: 'facturacion', lastRunAt: null, lastOutcome: null, late: true },
-      { name: 'casilla', lastRunAt: '2026-11-14T10:00:00.000Z', lastOutcome: 'error', late: false },
-      { name: 'recordatorios', lastRunAt: '2026-11-14T10:00:00.000Z', lastOutcome: 'ok', late: false },
+      { name: 'facturacion', lastRunAt: null, lastOutcome: null, late: true, readFailed: false },
+      { name: 'casilla', lastRunAt: '2026-11-14T10:00:00.000Z', lastOutcome: 'error', late: false, readFailed: false },
+      { name: 'recordatorios', lastRunAt: '2026-11-14T10:00:00.000Z', lastOutcome: 'ok', late: false, readFailed: false },
     ],
   },
 } as const;
+
+/** "Degradado" sin detalle: la respuesta anónima, o la de un usuario con la base caída. */
+const DEGRADADO_SIN_DETALLE = { status: 503, body: { status: 'degradado' } } as const;
+
+const SESSION_OK = { status: 200, body: { user: ANA } } as const;
 
 /** Solo se falsean los intervalos: `findBy*` sigue con timers reales. */
 function useFakeInterval() {
@@ -43,6 +50,10 @@ function healthCalls(fetchMock: FetchMock) {
   return fetchMock.callsTo('GET', '/api/health');
 }
 
+function sessionCalls(fetchMock: FetchMock) {
+  return fetchMock.callsTo('GET', '/api/auth/session');
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -69,7 +80,9 @@ describe('HealthBanner', () => {
         body: {
           status: 'degradado',
           db: 'no_disponible',
-          jobs: [{ name: '<img src=x onerror=alert(1)>', lastRunAt: null, lastOutcome: 'error', late: false }],
+          jobs: [
+            { name: '<img src=x onerror=alert(1)>', lastRunAt: null, lastOutcome: 'error', late: false, readFailed: false },
+          ],
         },
       },
     });
@@ -81,7 +94,8 @@ describe('HealthBanner', () => {
   });
 
   it('test_banner_degradado_sin_detalle_nombra_base_de_datos', async () => {
-    mockFetch({ 'GET /api/health': { status: 503, body: { status: 'degradado' } } });
+    // Desde FEAT-004 el "degradado" sin detalle pasa por la confirmación de sesión.
+    mockFetch({ 'GET /api/health': DEGRADADO_SIN_DETALLE, 'GET /api/auth/session': SESSION_OK });
     render(<HealthBanner />);
 
     const alert = await screen.findByRole('alert');
@@ -210,6 +224,218 @@ describe('HealthBanner', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(healthCalls(fetchMock)).toHaveLength(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('test_banner_degradado_sin_detalle_confirma_sesion_una_vez', async () => {
+    useFakeInterval();
+    const firstSession = deferred();
+    const fetchMock = mockFetch({
+      'GET /api/health': DEGRADADO_SIN_DETALLE,
+      'GET /api/auth/session': [firstSession.reply, SESSION_OK],
+    });
+    render(<HealthBanner />);
+    await settle();
+
+    // Una sola confirmación por consulta, y el banner espera su respuesta.
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+    expect(sessionCalls(fetchMock)[0]?.init?.credentials).toBe('include');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    firstSession.resolve(SESSION_OK);
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('Base de datos');
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+
+    // La consulta siguiente (60 s) confirma otra vez, una sola.
+    await advance(60_000);
+    expect(healthCalls(fetchMock)).toHaveLength(2);
+    expect(sessionCalls(fetchMock)).toHaveLength(2);
+  });
+
+  it('test_banner_sesion_no_autorizada_lleva_al_login_sin_banner', async () => {
+    useFakeInterval();
+    const toLogin = vi.fn();
+    setUnauthorizedHandler(toLogin);
+    const fetchMock = mockFetch({
+      'GET /api/health': [DEGRADADO_CON_DETALLE, DEGRADADO_SIN_DETALLE],
+      'GET /api/auth/session': SESSION_401,
+    });
+    render(<HealthBanner />);
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('facturacion');
+
+    await advance(60_000);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+    // El camino común de 401: store en anon y navegación al login.
+    expect(toLogin).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().status).toBe('anon');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Base de datos/)).not.toBeInTheDocument();
+  });
+
+  it('test_banner_sesion_valida_nombra_base_de_datos', async () => {
+    useFakeInterval();
+    const fetchMock = mockFetch({
+      'GET /api/health': [HEALTH_OK, DEGRADADO_SIN_DETALLE],
+      'GET /api/auth/session': SESSION_OK,
+    });
+    render(<HealthBanner />);
+    await settle();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await advance(60_000);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Con problemas: Base de datos');
+  });
+
+  it('test_banner_confirmacion_error_de_red_conserva_ultimo', async () => {
+    useFakeInterval();
+    const fetchMock = mockFetch({
+      'GET /api/health': [DEGRADADO_CON_DETALLE, DEGRADADO_SIN_DETALLE, HEALTH_OK, DEGRADADO_SIN_DETALLE],
+      'GET /api/auth/session': 'network-error',
+    });
+    render(<HealthBanner />);
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('facturacion');
+
+    // Con banner: se conserva lo que mostraba, sin pasar a "Base de datos".
+    await advance(60_000);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('facturacion');
+    expect(alert).toHaveTextContent('casilla');
+    expect(alert).not.toHaveTextContent('Base de datos');
+
+    // Sin banner: sigue sin banner.
+    await advance(60_000);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await advance(60_000);
+    expect(sessionCalls(fetchMock)).toHaveLength(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('test_banner_confirmacion_error_del_servidor_nombra_base_de_datos', async () => {
+    useFakeInterval();
+    const fetchMock = mockFetch({
+      'GET /api/health': [HEALTH_OK, DEGRADADO_SIN_DETALLE],
+      'GET /api/auth/session': { status: 500, body: { error: 'Error interno' } },
+    });
+    render(<HealthBanner />);
+    await settle();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    // Antes no mostraba nada: un 5xx en la confirmación nombra la base igual.
+    await advance(60_000);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('Con problemas: Base de datos');
+  });
+
+  it('test_banner_no_confirma_sesion_con_ok_ni_con_detalle', async () => {
+    useFakeInterval();
+    const fetchMock = mockFetch({
+      'GET /api/health': [
+        HEALTH_OK,
+        DEGRADADO_CON_DETALLE,
+        { status: 200, body: { status: 'ok' } },
+        DEGRADADO_SIN_DETALLE,
+      ],
+      'GET /api/auth/session': SESSION_OK,
+    });
+    render(<HealthBanner />);
+    await settle();
+    await advance(60_000);
+    expect(screen.getByRole('alert')).toHaveTextContent('facturacion');
+    await advance(60_000);
+
+    expect(healthCalls(fetchMock)).toHaveLength(3);
+    expect(sessionCalls(fetchMock)).toHaveLength(0);
+
+    // Control: la única respuesta que confirma es el "degradado" sin detalle.
+    await advance(60_000);
+    expect(healthCalls(fetchMock)).toHaveLength(4);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it('test_banner_nombra_proceso_con_lectura_fallida', async () => {
+    mockFetch({
+      'GET /api/health': {
+        status: 503,
+        body: {
+          status: 'degradado',
+          db: 'disponible',
+          jobs: [
+            { name: 'facturacion', lastRunAt: null, lastOutcome: null, late: false, readFailed: true },
+            { name: 'casilla', lastRunAt: '2026-11-14T10:00:00.000Z', lastOutcome: 'ok', late: false, readFailed: false },
+          ],
+        },
+      },
+    });
+    render(<HealthBanner />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Con problemas: facturacion');
+    expect(alert).not.toHaveTextContent('casilla');
+    expect(alert).not.toHaveTextContent('Base de datos');
+  });
+
+  it('test_banner_respuesta_sin_read_failed_invalida_conserva_ultimo', async () => {
+    useFakeInterval();
+    const fetchMock = mockFetch({
+      'GET /api/health': [
+        DEGRADADO_CON_DETALLE,
+        {
+          status: 503,
+          body: {
+            status: 'degradado',
+            db: 'disponible',
+            jobs: [{ name: 'otro', lastRunAt: null, lastOutcome: 'error', late: true }],
+          },
+        },
+        {
+          status: 503,
+          body: {
+            status: 'degradado',
+            db: 'disponible',
+            jobs: [{ name: 'otro', lastRunAt: null, lastOutcome: 'error', late: true, readFailed: 'si' }],
+          },
+        },
+      ],
+    });
+    render(<HealthBanner />);
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('facturacion');
+
+    for (let i = 2; i <= 3; i++) {
+      await advance(60_000);
+      expect(healthCalls(fetchMock)).toHaveLength(i);
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent('facturacion');
+      expect(alert).not.toHaveTextContent('otro');
+    }
+  });
+
+  it('test_banner_confirmacion_tardia_tras_desmontar_se_descarta', async () => {
+    useFakeInterval();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const lateSession = deferred();
+    const fetchMock = mockFetch({
+      'GET /api/health': DEGRADADO_SIN_DETALLE,
+      'GET /api/auth/session': lateSession.reply,
+    });
+    const view = render(<HealthBanner />);
+    await settle();
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
+
+    view.unmount();
+    lateSession.resolve(SESSION_OK);
+    await settle();
+    await advance(120_000);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(healthCalls(fetchMock)).toHaveLength(1);
+    expect(sessionCalls(fetchMock)).toHaveLength(1);
     expect(errorSpy).not.toHaveBeenCalled();
   });
 });

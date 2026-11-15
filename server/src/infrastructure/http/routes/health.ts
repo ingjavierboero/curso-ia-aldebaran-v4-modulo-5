@@ -75,6 +75,7 @@ function detailOf(report: HealthReport) {
       lastRunAt: job.lastRunAt === null ? null : job.lastRunAt.toISOString(),
       lastOutcome: job.lastOutcome,
       late: job.late,
+      readFailed: job.readFailed,
     })),
   };
 }

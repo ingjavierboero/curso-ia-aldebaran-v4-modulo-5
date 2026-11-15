@@ -23,6 +23,7 @@ import { SqliteDatabaseProbe } from './infrastructure/db/SqliteDatabaseProbe.js'
 import { createApp } from './infrastructure/http/app.js';
 import { createJsonLogger } from './infrastructure/http/authLog.js';
 import { parsePort } from './infrastructure/http/parsePort.js';
+import { createHealthEventLog } from './infrastructure/logging/healthEventLog.js';
 
 async function main(): Promise<void> {
   // Antes de crear cualquier Date (los imports de arriba no leen la zona horaria al evaluarse).
@@ -61,7 +62,14 @@ async function main(): Promise<void> {
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),
-    getHealth: new GetHealth({ probe, runs: jobRuns, registry: jobRegistry, clock, systemStartedAt }),
+    getHealth: new GetHealth({
+      probe,
+      runs: jobRuns,
+      registry: jobRegistry,
+      clock,
+      systemStartedAt,
+      log: createHealthEventLog(logger, clock),
+    }),
     peekSession: new PeekSession({ users, sessions, tokens, clock }),
     clock,
     logger,
