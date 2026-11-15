@@ -1,0 +1,8 @@
+# Decisions FEAT-009
+
+- D-01 contador por IP; D-02 5 fallos en 15 minutos bloquean 15 minutos; D-03 contadores separados por operación y un acierto reinicia el de su operación; D-04 qué cuenta como fallo en cada operación; D-05 en memoria, se borran al reiniciar — usuario — 2026-11-15 — DEFINE.
+- D-06 un solo ticket pese a 15 AC (W-PRD-06); supuestos S-01 (bloqueado → rechazo sin verificar, con minutos de espera), S-02 (bloqueo en el log) y S-03 (IP vista por el server, sin proxy) confirmados — usuario — 2026-11-15 — DEFINE.
+- Rama desde `feat/FEAT-007-cambio-de-contrasena` con PR apilado sobre el #11 (opción 1) — usuario — 2026-11-15 — CLASSIFY.
+- R-05 aceptado: con D-01 y D-03, quien tiene una cuenta válida puede reiniciar el contador con aciertos propios; se revisa con usuarios externos o con conteo por cuenta — usuario — 2026-11-15 — PLAN.
+- Rediseño por la revisión de PLAN (arch-auditor F1–F5, W1–W12): `express-rate-limit` solo como compuerta (ADR-006), regla pura `AttemptWindow` sobre fallos confirmados, limitadores dentro de `createApp`, parseo del primer Admin dentro del `try`; los rechazos del parser JSON y de `requireJson` no llegan a la ruta y no cuentan; los pedidos concurrentes en curso no cuentan como fallos — asistente — 2026-11-15 — PLAN.
+- Supuestos de Block 1 aceptados por los revisores: `bodyEmailOf` exportado y basado en `bodyObject`; el handler del 429 nunca lanza (email `''` → `null`); `Retry-After` mínimo 1 s y calculado desde `req.rateLimit.resetTime`; el mensaje con N = 1 dice "1 minutos" (literal de la spec); `express-rate-limit` declarado `^8.7.2` (resuelve 8.7.4); borde de la ventana alineado a la spec (un fallo de exactamente 15 minutos todavía cuenta) — asistente — 2026-11-15 — Block 1.
