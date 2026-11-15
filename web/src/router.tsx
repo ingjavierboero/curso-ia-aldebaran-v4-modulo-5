@@ -4,6 +4,7 @@ import type { PublicUser } from './api/types';
 import { FirstAdminPage } from './pages/FirstAdminPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { UsersPage } from './pages/UsersPage';
 import { useAuthStore } from './store/authStore';
 
@@ -12,8 +13,8 @@ import { useAuthStore } from './store/authStore';
  * Los loaders llaman a la API con `navigateOnUnauthorized: false` porque redirigen ellos.
  */
 
-/** `/`: exige sesión. Sin sesión (401) o sin servidor, a `/login` (falla cerrado). */
-async function homeLoader() {
+/** `/` y `/perfil`: exigen sesión. Sin sesión (401) o sin servidor, a `/login` (falla cerrado). */
+async function sessionLoader() {
   try {
     const user = await getSession({ navigateOnUnauthorized: false });
     useAuthStore.getState().setUser(user);
@@ -68,7 +69,8 @@ async function setupLoader() {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/', loader: homeLoader, Component: HomePage },
+  { path: '/', loader: sessionLoader, Component: HomePage },
+  { path: '/perfil', loader: sessionLoader, Component: ProfilePage },
   { path: '/usuarios', loader: usersLoader, Component: UsersPage },
   { path: '/login', loader: loginLoader, Component: LoginPage },
   { path: '/setup', loader: setupLoader, Component: FirstAdminPage },

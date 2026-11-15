@@ -14,6 +14,15 @@ export class WeakPassword extends Error {
   }
 }
 
+/** La contraseña nueva es igual a la actual (FEAT-007, FR-06). */
+export class PasswordUnchanged extends Error {
+  override readonly name = 'PasswordUnchanged';
+
+  constructor(message = 'La contraseña nueva debe ser distinta de la actual') {
+    super(message);
+  }
+}
+
 export class InvalidName extends Error {
   override readonly name = 'InvalidName';
 

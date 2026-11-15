@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import type { AuthenticateSession } from '../../application/auth/AuthenticateSession.js';
+import type { ChangeOwnPassword } from '../../application/auth/ChangeOwnPassword.js';
 import type { GetSetupStatus } from '../../application/auth/GetSetupStatus.js';
 import type { Login } from '../../application/auth/Login.js';
 import type { Logout } from '../../application/auth/Logout.js';
@@ -16,6 +17,8 @@ import type { Clock } from '../../domain/shared/Clock.js';
 import { createAuthMiddleware } from './authMiddleware.js';
 import type { Logger } from './authLog.js';
 import { createErrorHandler } from './errorHandler.js';
+import { AttemptTracker } from './rateLimit/AttemptTracker.js';
+import { bodyEmailOf, createAttemptGate } from './rateLimit/attemptGate.js';
 import { requireJson } from './requireJson.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
@@ -27,6 +30,8 @@ import { defaultSecureCookie } from './sessionCookie.js';
 export interface AppDeps {
   login: Pick<Login, 'execute'>;
   logout: Pick<Logout, 'execute'>;
+  /** Cambio de la propia contraseña (FEAT-007): siempre sobre el usuario de la sesión. */
+  changeOwnPassword: Pick<ChangeOwnPassword, 'execute'>;
   authenticateSession: Pick<AuthenticateSession, 'execute'>;
   registerFirstAdmin: Pick<RegisterFirstAdmin, 'execute'>;
   getSetupStatus: Pick<GetSetupStatus, 'execute'>;
@@ -69,7 +74,35 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api', noStore, requireJson, express.json({ limit: '10kb' }));
   // FR-01: deny-by-default sobre todo /api salvo las rutas públicas (`PUBLIC_ROUTES`).
   app.use('/api', createAuthMiddleware(deps));
-  app.use('/api', authRoutes({ ...deps, secureCookie }), setupRoutes(deps), healthRoutes(deps), usersRoutes(deps));
+  // FEAT-009 (ADR-006): un registro de intentos y una compuerta por operación, creados una sola vez
+  // por app (nunca por pedido). Viven en memoria: una app nueva (un reinicio) arranca sin bloqueos.
+  const { clock, logger } = deps;
+  const loginTracker = new AttemptTracker(clock);
+  const firstAdminTracker = new AttemptTracker(clock);
+  const passwordChangeTracker = new AttemptTracker(clock);
+  const loginGate = createAttemptGate({ operation: 'login', tracker: loginTracker, clock, logger, emailOf: bodyEmailOf });
+  const firstAdminGate = createAttemptGate({
+    operation: 'first_admin',
+    tracker: firstAdminTracker,
+    clock,
+    logger,
+    emailOf: bodyEmailOf,
+  });
+  const passwordChangeGate = createAttemptGate({
+    operation: 'password_change',
+    tracker: passwordChangeTracker,
+    clock,
+    logger,
+    emailOf: (req) => req.user?.email ?? '',
+  });
+
+  app.use(
+    '/api',
+    authRoutes({ ...deps, secureCookie, loginGate, loginTracker, passwordChangeGate, passwordChangeTracker }),
+    setupRoutes({ ...deps, firstAdminGate, firstAdminTracker }),
+    healthRoutes(deps),
+    usersRoutes(deps),
+  );
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'No encontrado' });

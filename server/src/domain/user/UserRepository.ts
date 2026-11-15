@@ -17,4 +17,6 @@ export interface UserRepository {
    * email ya es de otro usuario (UNIQUE de email).
    */
   update(user: User): void;
+  /** Guarda solo el hash de contraseña del usuario con ese id (FEAT-007); `update` no lo toca. */
+  updatePasswordHash(user: User): void;
 }

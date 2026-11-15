@@ -153,3 +153,40 @@ describe('setup del primer Admin', () => {
     expect(t.countUsers()).toBe(0);
   });
 });
+
+describe('límite de intentos del primer Admin (FEAT-009)', () => {
+  // Con un usuario existente, 5 intentos (409) → el sexto da 429 (AC-07)
+  it('test_first_admin_rechazado_cinco_veces_bloquea', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const body = { name: 'Intruso', email: 'intruso@empresa.com', password: '12345678' };
+    for (let i = 0; i < 5; i++) {
+      expect((await request(t.app).post('/api/setup/first-admin').send(body)).status).toBe(409);
+    }
+
+    const res = await request(t.app).post('/api/setup/first-admin').send(body);
+
+    expect(res.status).toBe(429);
+    expect(res.body).toEqual({ error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' });
+    expect(res.headers['retry-after']).toBe('900');
+    expect(t.countUsers()).toBe(1);
+    expect(t.logs.filter((l) => l.record.outcome === 'blocked').map((l) => l.record)).toEqual([
+      expect.objectContaining({ event: 'first_admin', outcome: 'blocked', email: 'intruso@empresa.com' }),
+    ]);
+  });
+
+  // Sistema vacío: 5 registros con body inválido (400, sin llegar al caso de uso) cuentan; el sexto, válido, da 429 (FR-04)
+  it('test_first_admin_body_invalido_cuenta_y_bloquea', async () => {
+    for (let i = 0; i < 5; i++) {
+      const res = await request(t.app).post('/api/setup/first-admin').send({ email: 'admin@empresa.com', password: '12345678' });
+      expect(res.status).toBe(400);
+    }
+
+    const res = await request(t.app)
+      .post('/api/setup/first-admin')
+      .send({ name: 'Ana Pérez', email: 'admin@empresa.com', password: '12345678' });
+
+    expect(res.status).toBe(429);
+    expect(res.body).toEqual({ error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' });
+    expect(t.countUsers()).toBe(0);
+  });
+});

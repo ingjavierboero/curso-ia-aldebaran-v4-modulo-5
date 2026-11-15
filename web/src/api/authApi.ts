@@ -33,6 +33,19 @@ export async function getSession(options: { navigateOnUnauthorized?: boolean } =
   return user;
 }
 
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** Cambia la contraseña del usuario de la sesión (FEAT-007): `204` sin body. Un 400 trae el motivo. */
+export async function changePassword(input: ChangePasswordInput): Promise<void> {
+  await request<void>('/api/auth/password', {
+    method: 'POST',
+    body: { currentPassword: input.currentPassword, newPassword: input.newPassword },
+  });
+}
+
 export async function getSetupStatus(): Promise<{ needsFirstAdmin: boolean }> {
   const { needsFirstAdmin } = await request<{ needsFirstAdmin: boolean }>('/api/setup/status');
   return { needsFirstAdmin };

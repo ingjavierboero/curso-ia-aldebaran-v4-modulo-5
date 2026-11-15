@@ -8,4 +8,9 @@ export interface SessionRepository {
   delete(id: string): void;
   /** Borra todas las sesiones del usuario (FR-07) y devuelve cuántas borró. */
   deleteByUserId(userId: string): number;
+  /**
+   * Borra las sesiones del usuario salvo la de id `keepSessionId` (FEAT-007, FR-07) y devuelve
+   * cuántas borró. Nunca toca sesiones de otros usuarios.
+   */
+  deleteByUserIdExcept(userId: string, keepSessionId: string): number;
 }

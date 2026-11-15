@@ -93,6 +93,27 @@ describe('DrizzleSessionRepository', () => {
     expect(repo.deleteByUserId('no-existe')).toBe(0);
   });
 
+  // FEAT-007 (FR-07, AC-09): borra las demás sesiones del usuario, conserva la indicada y no toca las de otros
+  it('test_drizzle_delete_by_user_id_except_conserva_la_actual', () => {
+    seedUser(t, 'u-2', 'otro@empresa.com');
+    const repo = new DrizzleSessionRepository(t.db);
+    repo.insert(makeSession('s-1', '1'.repeat(64), 'u-1'));
+    repo.insert(makeSession('s-2', '2'.repeat(64), 'u-1'));
+    repo.insert(makeSession('s-3', '3'.repeat(64), 'u-1'));
+    repo.insert(makeSession('s-4', '4'.repeat(64), 'u-2'));
+
+    expect(repo.deleteByUserIdExcept('u-1', 's-2')).toBe(2);
+
+    expect(sessionIds(t)).toEqual(['s-2', 's-4']);
+    expect(repo.findByTokenHash('2'.repeat(64))?.userId).toBe('u-1');
+    expect(repo.findByTokenHash('4'.repeat(64))?.userId).toBe('u-2');
+    // solo queda la conservada: no borra nada más
+    expect(repo.deleteByUserIdExcept('u-1', 's-2')).toBe(0);
+    // una sesión de otro usuario como "conservada" no protege nada del usuario ni borra la ajena
+    expect(repo.deleteByUserIdExcept('u-1', 's-4')).toBe(1);
+    expect(sessionIds(t)).toEqual(['s-4']);
+  });
+
   it('findByTokenHash lanza si last_activity_at o created_at no es un ISO 8601 válido (no hidrata Invalid Date)', () => {
     const repo = new DrizzleSessionRepository(t.db);
     repo.insert(makeSession('s-1', 'd'.repeat(64)));

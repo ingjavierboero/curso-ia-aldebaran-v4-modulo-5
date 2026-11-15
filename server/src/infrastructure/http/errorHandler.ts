@@ -1,6 +1,11 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import type { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
-import { FirstAdminAlreadyExists, InvalidCredentials, Unauthenticated } from '../../application/auth/errors.js';
+import {
+  FirstAdminAlreadyExists,
+  IncorrectCurrentPassword,
+  InvalidCredentials,
+  Unauthenticated,
+} from '../../application/auth/errors.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { Forbidden } from '../../domain/auth/errors.js';
 import {
@@ -9,6 +14,7 @@ import {
   InvalidName,
   InvalidRole,
   LastActiveAdmin,
+  PasswordUnchanged,
   UserNotFound,
   WeakPassword,
 } from '../../domain/user/errors.js';
@@ -70,7 +76,10 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       err instanceof WeakPassword ||
       err instanceof InvalidEmail ||
       err instanceof InvalidName ||
-      err instanceof InvalidRole
+      err instanceof InvalidRole ||
+      err instanceof PasswordUnchanged ||
+      // 400 y no 401: la web toma cualquier 401 como sesión perdida y navega al login (FEAT-007).
+      err instanceof IncorrectCurrentPassword
     ) {
       res.status(400).json({ error: err.message });
       return;

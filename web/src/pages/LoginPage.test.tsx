@@ -169,4 +169,23 @@ describe('LoginPage', () => {
     renderApp('/login');
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión en Aldebaran' })).toBeInTheDocument();
   });
+
+  // 429 por demasiados intentos: muestra el mensaje del server con los minutos y vacía la contraseña (AC-13).
+  it('test_login_page_bloqueo_rechazado_muestra_mensaje', async () => {
+    mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/auth/session': SESSION_401,
+      'POST /api/auth/login': { status: 429, body: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' } },
+    });
+    const { router, user } = renderApp('/login');
+
+    await user.type(await screen.findByLabelText('Email'), 'ana@aldebaran.test');
+    await user.type(screen.getByLabelText('Contraseña'), 'secreta123');
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+    expect(await screen.findByText('Demasiados intentos. Probá de nuevo en 15 minutos.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Contraseña')).toHaveValue(''));
+    expect(screen.getByLabelText('Email')).toHaveValue('ana@aldebaran.test');
+    expect(router.state.location.pathname).toBe('/login');
+  });
 });

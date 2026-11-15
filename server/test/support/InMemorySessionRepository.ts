@@ -49,6 +49,17 @@ export class InMemorySessionRepository implements SessionRepository {
     return deleted;
   }
 
+  deleteByUserIdExcept(userId: string, keepSessionId: string): number {
+    let deleted = 0;
+    for (const [id, session] of this.rows) {
+      if (session.userId === userId && id !== keepSessionId) {
+        this.rows.delete(id);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
   findById(id: string): Session | null {
     return this.rows.get(id) ?? null;
   }

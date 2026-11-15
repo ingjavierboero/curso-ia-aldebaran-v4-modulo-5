@@ -101,4 +101,23 @@ describe('FirstAdminPage', () => {
     expect(router.state.location.pathname).toBe('/setup');
     expect(fetchMock.callsTo('POST', '/api/setup/first-admin')).toHaveLength(1);
   });
+
+  // 429 por demasiados intentos: muestra el mensaje del server y sigue en /setup (no es el 409 que redirige) (AC-13).
+  it('test_first_admin_page_bloqueo_rechazado_muestra_mensaje', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: true } },
+      'POST /api/setup/first-admin': { status: 429, body: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' } },
+    });
+    const { router, user } = renderApp('/setup');
+
+    await user.type(await screen.findByLabelText('Nombre'), 'Ana Admin');
+    await user.type(screen.getByLabelText('Email'), 'ana@aldebaran.test');
+    await user.type(screen.getByLabelText('Contraseña'), '12345678');
+    await user.click(screen.getByRole('button', { name: 'Crear Admin' }));
+
+    expect(await screen.findByText('Demasiados intentos. Probá de nuevo en 15 minutos.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Crear Admin' })).toBeEnabled());
+    expect(router.state.location.pathname).toBe('/setup');
+    expect(fetchMock.callsTo('POST', '/api/setup/first-admin')).toHaveLength(1);
+  });
 });

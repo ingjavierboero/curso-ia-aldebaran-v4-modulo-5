@@ -73,6 +73,10 @@ export class DrizzleUserRepository implements UserRepository {
       throw err;
     }
   }
+
+  updatePasswordHash(user: User): void {
+    this.db.update(users).set({ passwordHash: user.passwordHash }).where(eq(users.id, user.id)).run();
+  }
 }
 
 function toEntity(row: UserRow): User {

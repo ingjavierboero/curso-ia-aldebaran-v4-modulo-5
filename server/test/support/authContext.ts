@@ -1,4 +1,5 @@
 import { AuthenticateSession } from '../../src/application/auth/AuthenticateSession.js';
+import { ChangeOwnPassword } from '../../src/application/auth/ChangeOwnPassword.js';
 import { GetSetupStatus } from '../../src/application/auth/GetSetupStatus.js';
 import { Login } from '../../src/application/auth/Login.js';
 import { Logout } from '../../src/application/auth/Logout.js';
@@ -51,6 +52,7 @@ export function createAuthContext() {
   const updateUser = new UpdateUser({ uow });
   const deactivateUser = new DeactivateUser({ uow });
   const reactivateUser = new ReactivateUser({ uow });
+  const changeOwnPassword = new ChangeOwnPassword({ users, uow, hasher, tokens });
 
   function seedUser(options: SeedUserOptions = {}): User {
     const password = options.password ?? 'contraseña-segura';
@@ -86,6 +88,7 @@ export function createAuthContext() {
     updateUser,
     deactivateUser,
     reactivateUser,
+    changeOwnPassword,
     seedUser,
   };
 }

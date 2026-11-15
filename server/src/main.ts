@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { constants as osConstants } from 'node:os';
 import { AuthenticateSession } from './application/auth/AuthenticateSession.js';
+import { ChangeOwnPassword } from './application/auth/ChangeOwnPassword.js';
 import { GetSetupStatus } from './application/auth/GetSetupStatus.js';
 import { Login } from './application/auth/Login.js';
 import { Logout } from './application/auth/Logout.js';
@@ -64,6 +65,7 @@ async function main(): Promise<void> {
   const app = createApp({
     login: new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash }),
     logout: new Logout({ sessions, tokens }),
+    changeOwnPassword: new ChangeOwnPassword({ users, uow, hasher, tokens }),
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),

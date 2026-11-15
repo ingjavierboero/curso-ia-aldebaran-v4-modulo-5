@@ -102,6 +102,23 @@ describe('User', () => {
       expect(inactive.status).toBe('inactivo');
     });
 
+    // FEAT-007 (AC-03): el hash nuevo va en un usuario nuevo; el original no cambia
+    it('test_user_with_password_hash_no_muta_el_original', () => {
+      const changed = base.withPasswordHash('hash-nuevo');
+
+      expect(changed).not.toBe(base);
+      expect(changed).toBeInstanceOf(User);
+      expect(changed.passwordHash).toBe('hash-nuevo');
+      expect(changed.id).toBe('u-3');
+      expect(changed.name).toBe('Ana');
+      expect(changed.email.value).toBe('ana@empresa.com');
+      expect(changed.role).toBe('admin');
+      expect(changed.status).toBe('activo');
+      expect(changed.createdAt.toISOString()).toBe('2026-11-04T12:00:00.000Z');
+
+      expect(base.passwordHash).toBe('h');
+    });
+
     it('isActiveAdmin es verdadero solo para un Admin Activo', () => {
       expect(base.isActiveAdmin()).toBe(true);
       expect(base.deactivated().isActiveAdmin()).toBe(false);
