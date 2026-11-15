@@ -51,4 +51,21 @@ describe('ReactivateUser', () => {
     expect(() => ctx.reactivateUser.execute(consulta, 'u-baja')).toThrow(Forbidden);
     expect(ctx.users.findById('u-baja')?.status).toBe('inactivo');
   });
+
+  // FR-12 / W-2 de VERIFY: el actor se relee dentro de la transacción. Con un actor que trae el
+  // perfil Admin "viejo" pero ya fue degradado o dado de baja, la reactivación no se realiza.
+  it('test_reactivate_user_actor_desactualizado_rechazado', () => {
+    const ctx = createAuthContext();
+    const admin = ctx.seedUser({ id: 'u-admin', email: 'admin@empresa.com' });
+    ctx.seedUser({ id: 'u-otro-admin', email: 'otro@empresa.com' });
+    ctx.seedUser({ id: 'u-baja', email: 'baja@empresa.com', role: 'consulta', status: 'inactivo' });
+
+    ctx.users.update(admin.withProfile({ name: admin.name, email: admin.email, role: 'consulta' }));
+    expect(() => ctx.reactivateUser.execute(admin, 'u-baja')).toThrow(Forbidden);
+
+    ctx.users.update(admin.deactivated());
+    expect(() => ctx.reactivateUser.execute(admin, 'u-baja')).toThrow(Forbidden);
+
+    expect(ctx.users.findById('u-baja')?.status).toBe('inactivo');
+  });
 });

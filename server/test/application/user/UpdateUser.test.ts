@@ -117,4 +117,22 @@ describe('UpdateUser', () => {
     expect(ctx.users.findById('u-editor')?.role).toBe('editor');
     expect(ctx.users.findById('u-admin')?.name).toBe('Ana Pérez');
   });
+
+  // FR-12 / W-2 de VERIFY: el actor se relee dentro de la transacción. Con un actor que trae el
+  // perfil Admin "viejo" pero ya fue degradado o dado de baja, la modificación no se realiza.
+  it('test_update_user_actor_desactualizado_rechazado', () => {
+    const ctx = createAuthContext();
+    const admin = ctx.seedUser({ id: 'u-admin', email: 'admin@empresa.com' });
+    ctx.seedUser({ id: 'u-otro-admin', email: 'otro@empresa.com' });
+    ctx.seedUser({ id: 'u-bruno', name: 'Bruno', email: 'bruno@empresa.com', role: 'editor' });
+
+    ctx.users.update(admin.withProfile({ name: admin.name, email: admin.email, role: 'editor' }));
+    expect(() => ctx.updateUser.execute(admin, 'u-bruno', { name: 'Bruno Nuevo' })).toThrow(Forbidden);
+
+    ctx.users.update(admin.deactivated());
+    expect(() => ctx.updateUser.execute(admin, 'u-bruno', { role: 'admin' })).toThrow(Forbidden);
+
+    expect(ctx.users.findById('u-bruno')?.name).toBe('Bruno');
+    expect(ctx.users.findById('u-bruno')?.role).toBe('editor');
+  });
 });
