@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import { AuthenticateSession } from '../../src/application/auth/AuthenticateSession.js';
+import { ChangeOwnPassword } from '../../src/application/auth/ChangeOwnPassword.js';
 import { GetSetupStatus } from '../../src/application/auth/GetSetupStatus.js';
 import { Login } from '../../src/application/auth/Login.js';
 import { Logout } from '../../src/application/auth/Logout.js';
@@ -91,6 +92,7 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}): Promise<T
   const deps: AppDeps = {
     login: new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash }),
     logout: new Logout({ sessions, tokens }),
+    changeOwnPassword: new ChangeOwnPassword({ users, uow, hasher, tokens }),
     authenticateSession: new AuthenticateSession({ users, sessions, tokens, clock }),
     registerFirstAdmin: new RegisterFirstAdmin({ uow, hasher, ids, clock }),
     getSetupStatus: new GetSetupStatus({ users }),

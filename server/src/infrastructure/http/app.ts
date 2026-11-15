@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import type { AuthenticateSession } from '../../application/auth/AuthenticateSession.js';
+import type { ChangeOwnPassword } from '../../application/auth/ChangeOwnPassword.js';
 import type { GetSetupStatus } from '../../application/auth/GetSetupStatus.js';
 import type { Login } from '../../application/auth/Login.js';
 import type { Logout } from '../../application/auth/Logout.js';
@@ -27,6 +28,8 @@ import { defaultSecureCookie } from './sessionCookie.js';
 export interface AppDeps {
   login: Pick<Login, 'execute'>;
   logout: Pick<Logout, 'execute'>;
+  /** Cambio de la propia contraseña (FEAT-007): siempre sobre el usuario de la sesión. */
+  changeOwnPassword: Pick<ChangeOwnPassword, 'execute'>;
   authenticateSession: Pick<AuthenticateSession, 'execute'>;
   registerFirstAdmin: Pick<RegisterFirstAdmin, 'execute'>;
   getSetupStatus: Pick<GetSetupStatus, 'execute'>;

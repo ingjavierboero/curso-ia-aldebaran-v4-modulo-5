@@ -241,6 +241,191 @@ describe('POST /api/auth/logout', () => {
   });
 });
 
+describe('POST /api/auth/password', () => {
+  const NEW_PASSWORD = 'otra-contraseña-nueva';
+  const WEAK_PASSWORD = { error: 'La contraseña debe tener entre 8 y 1024 caracteres' };
+
+  async function changePassword(cookie: string | undefined, body: unknown): Promise<request.Response> {
+    const req = request(t.app).post('/api/auth/password');
+    if (cookie !== undefined) req.set('Cookie', cookie);
+    return req.send(body as object);
+  }
+
+  async function loginStatus(email: string, password: string): Promise<number> {
+    const res = await request(t.app).post('/api/auth/login').send({ email, password });
+    return res.status;
+  }
+
+  function passwordChangeLogs(): Record<string, unknown>[] {
+    return t.logs.filter((l) => l.record.event === 'password_change').map((l) => l.record);
+  }
+
+  // Con sesión y datos válidos responde 204 y el login con la nueva funciona (AC-03)
+  it('test_post_password_cambia_y_responde_204', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+
+    expect(res.status).toBe(204);
+    expect(res.text).toBe('');
+    expect(await loginStatus('admin@empresa.com', NEW_PASSWORD)).toBe(200);
+    expect(await loginStatus('admin@empresa.com', PASSWORD)).toBe(401);
+  });
+
+  // Contraseña actual incorrecta → 400 con "La contraseña actual es incorrecta" (AC-05, AC-14)
+  it('test_post_password_actual_incorrecta_400_rechazado', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: 'clave-equivocada', newPassword: NEW_PASSWORD });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'La contraseña actual es incorrecta' });
+    // 400 y no 401: la sesión sigue abierta.
+    expect((await request(t.app).get('/api/auth/session').set('Cookie', cookie)).status).toBe(200);
+    expect(await loginStatus('admin@empresa.com', PASSWORD)).toBe(200);
+  });
+
+  // Nueva de 7 caracteres → 400 con el mensaje de WeakPassword (AC-06)
+  it('test_post_password_nueva_corta_400_rechazado', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: 'a'.repeat(7) });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual(WEAK_PASSWORD);
+    expect(await loginStatus('admin@empresa.com', PASSWORD)).toBe(200);
+  });
+
+  // Nueva de 1025 caracteres → 400 con el mensaje de WeakPassword, no el de InvalidBody (AC-07)
+  it('test_post_password_nueva_larga_400_rechazado', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: 'a'.repeat(1025) });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual(WEAK_PASSWORD);
+    expect(await loginStatus('admin@empresa.com', PASSWORD)).toBe(200);
+  });
+
+  // Nueva igual a la actual → 400 con el mensaje de PasswordUnchanged (AC-08)
+  it('test_post_password_igual_a_la_actual_400_rechazado', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: PASSWORD });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'La contraseña nueva debe ser distinta de la actual' });
+    expect(passwordChangeLogs()).toEqual([expect.objectContaining({ outcome: 'invalid' })]);
+  });
+
+  // Campo faltante → 400 y queda en el log como invalid (AC-11)
+  it('test_post_password_body_invalido_400', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const sinNueva = await changePassword(cookie, { currentPassword: PASSWORD });
+    expect(sinNueva.status).toBe(400);
+    expect(responseBody(sinNueva.body, { error: 'string' }).error).toMatch(/newPassword/);
+
+    const actualLarga = await changePassword(cookie, { currentPassword: 'a'.repeat(1025), newPassword: NEW_PASSWORD });
+    expect(actualLarga.status).toBe(400);
+    expect(responseBody(actualLarga.body, { error: 'string' }).error).toMatch(/currentPassword/);
+
+    expect(passwordChangeLogs()).toEqual([
+      expect.objectContaining({ event: 'password_change', outcome: 'invalid', email: 'admin@empresa.com' }),
+      expect.objectContaining({ event: 'password_change', outcome: 'invalid', email: 'admin@empresa.com' }),
+    ]);
+    expect(await loginStatus('admin@empresa.com', PASSWORD)).toBe(200);
+  });
+
+  // Sin cookie (o con una inválida) → 401 y la contraseña no cambia (AC-15)
+  it('test_post_password_sin_sesion_401_no_autorizado', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const body = { currentPassword: PASSWORD, newPassword: NEW_PASSWORD };
+
+    const sinCookie = await changePassword(undefined, body);
+    expect(sinCookie.status).toBe(401);
+    expect(sinCookie.body).toEqual({ error: 'Sesión no válida' });
+    const cookieInvalida = await changePassword('aldebaran_sid=no-es-una-sesion', body);
+    expect(cookieInvalida.status).toBe(401);
+
+    expect(passwordChangeLogs()).toHaveLength(0);
+    expect(await loginStatus('admin@empresa.com', NEW_PASSWORD)).toBe(401);
+
+    // Control: con sesión, el mismo pedido sí llega a la ruta y cambia la contraseña.
+    const cookie = await loginAs('admin@empresa.com');
+    expect((await changePassword(cookie, body)).status).toBe(204);
+  });
+
+  // Registra password_change/wrong_current con el email y sin ninguna de las contraseñas (AC-11)
+  it('test_post_password_log_actual_incorrecta_sin_contraseñas', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    await changePassword(cookie, { currentPassword: 'clave-equivocada', newPassword: NEW_PASSWORD });
+
+    expect(passwordChangeLogs()).toEqual([
+      {
+        event: 'password_change',
+        outcome: 'wrong_current',
+        email: 'admin@empresa.com',
+        ip: expect.any(String) as unknown,
+        at: '2026-11-04T12:00:00.000Z',
+      },
+    ]);
+    const everything = JSON.stringify(t.logs);
+    expect(everything).not.toContain('clave-equivocada');
+    expect(everything).not.toContain(NEW_PASSWORD);
+    expect(everything).not.toContain(PASSWORD);
+  });
+
+  // Registra password_change/ok; ni el log ni la respuesta contienen la contraseña nueva (AC-12)
+  it('test_post_password_log_ok_sin_contraseña_nueva', async () => {
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+
+    expect(res.status).toBe(204);
+    expect(passwordChangeLogs()).toEqual([
+      {
+        event: 'password_change',
+        outcome: 'ok',
+        email: 'admin@empresa.com',
+        ip: expect.any(String) as unknown,
+        at: '2026-11-04T12:00:00.000Z',
+      },
+    ]);
+    expect(JSON.stringify(t.logs)).not.toContain(NEW_PASSWORD);
+    expect(res.text).not.toContain(NEW_PASSWORD);
+    expect(JSON.stringify(res.headers)).not.toContain(NEW_PASSWORD);
+  });
+
+  // Error inesperado en el caso de uso → 500 "Error interno" y log `error` (AC-12)
+  it('test_post_password_error_interno_500', async () => {
+    t.cleanup();
+    t = await createTestApp({
+      changeOwnPassword: { execute: () => Promise.reject(new Error('SQLITE_BUSY: detalle interno')) },
+    });
+    await t.seedUser({ email: 'admin@empresa.com' });
+    const cookie = await loginAs('admin@empresa.com');
+
+    const res = await changePassword(cookie, { currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: 'Error interno' });
+    expect(passwordChangeLogs()).toEqual([
+      expect.objectContaining({ event: 'password_change', outcome: 'error', email: 'admin@empresa.com' }),
+    ]);
+    expect(JSON.stringify(t.logs)).not.toContain(NEW_PASSWORD);
+  });
+});
+
 describe('FR-08 y errores', () => {
   // Ninguna respuesta de login, first-admin ni session contiene passwordHash ni password_hash
   it('test_ninguna_respuesta_contiene_password_hash', async () => {

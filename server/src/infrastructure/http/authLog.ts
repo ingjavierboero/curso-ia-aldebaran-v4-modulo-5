@@ -26,8 +26,8 @@ export function createJsonLogger(write: (line: string) => void = (line) => proce
   };
 }
 
-export type AuthEvent = 'login' | 'first_admin';
-export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'error';
+export type AuthEvent = 'login' | 'first_admin' | 'password_change';
+export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'wrong_current' | 'error';
 
 /** El email normalizado por `Email.create`, o `null` si no es un email válido (`InvalidEmail`). */
 function loggableEmail(rawEmail: string): string | null {
@@ -40,10 +40,12 @@ function loggableEmail(rawEmail: string): string | null {
 }
 
 /**
- * Registra un intento de login o de registro del primer Admin (R-05): `{ event, outcome, email, ip, at }`.
- * El email se registra normalizado (trim + minúsculas). Uno inválido no tiene forma normalizada y se
- * registra como `null`: así una contraseña escrita en el campo email no queda en el log. La
- * contraseña y el token no se pasan nunca.
+ * Registra un intento de login, de registro del primer Admin o de cambio de la propia contraseña
+ * (R-05, FEAT-007 FR-09): `{ event, outcome, email, ip, at }`. En `password_change` el email es el de
+ * la sesión y `wrong_current` indica que la contraseña actual no verificó. El email se registra
+ * normalizado (trim + minúsculas). Uno inválido no tiene forma normalizada y se registra como
+ * `null`: así una contraseña escrita en el campo email no queda en el log. Ninguna contraseña (ni la
+ * actual ni la nueva) y ningún token se pasan nunca.
  */
 export function logAuthAttempt(
   logger: Logger,
