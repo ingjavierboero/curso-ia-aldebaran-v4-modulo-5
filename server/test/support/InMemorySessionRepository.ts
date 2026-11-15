@@ -38,11 +38,32 @@ export class InMemorySessionRepository implements SessionRepository {
     this.rows.delete(id);
   }
 
+  deleteByUserId(userId: string): number {
+    let deleted = 0;
+    for (const [id, session] of this.rows) {
+      if (session.userId === userId) {
+        this.rows.delete(id);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
   findById(id: string): Session | null {
     return this.rows.get(id) ?? null;
   }
 
   all(): Session[] {
     return [...this.rows.values()];
+  }
+
+  /** Foto del contenido, para que `InMemoryUnitOfWork` pueda hacer rollback. */
+  snapshot(): Map<string, Session> {
+    return new Map(this.rows);
+  }
+
+  restore(snapshot: Map<string, Session>): void {
+    this.rows.clear();
+    for (const [id, session] of snapshot) this.rows.set(id, session);
   }
 }

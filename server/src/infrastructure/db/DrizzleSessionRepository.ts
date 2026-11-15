@@ -36,6 +36,10 @@ export class DrizzleSessionRepository implements SessionRepository {
   delete(id: string): void {
     this.db.delete(sessions).where(eq(sessions.id, id)).run();
   }
+
+  deleteByUserId(userId: string): number {
+    return this.db.delete(sessions).where(eq(sessions.userId, userId)).run().changes;
+  }
 }
 
 function toEntity(row: SessionRow): Session {

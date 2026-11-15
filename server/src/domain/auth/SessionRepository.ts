@@ -6,4 +6,6 @@ export interface SessionRepository {
   findByTokenHash(tokenHash: string): Session | null;
   touch(id: string, now: Date): void;
   delete(id: string): void;
+  /** Borra todas las sesiones del usuario (FR-07) y devuelve cuántas borró. */
+  deleteByUserId(userId: string): number;
 }

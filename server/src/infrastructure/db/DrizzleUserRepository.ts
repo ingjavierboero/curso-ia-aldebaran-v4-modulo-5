@@ -1,6 +1,6 @@
-import { count, eq } from 'drizzle-orm';
-import { FirstAdminAlreadyExists } from '../../application/auth/errors.js';
+import { and, asc, count, eq } from 'drizzle-orm';
 import { Email } from '../../domain/user/Email.js';
+import { EmailAlreadyInUse } from '../../domain/user/errors.js';
 import { User } from '../../domain/user/User.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';
 import type { SqliteHandle } from './handle.js';
@@ -18,6 +18,15 @@ export class DrizzleUserRepository implements UserRepository {
     return row?.n ?? 0;
   }
 
+  countActiveAdmins(): number {
+    const row = this.db
+      .select({ n: count() })
+      .from(users)
+      .where(and(eq(users.role, 'admin'), eq(users.status, 'activo')))
+      .get();
+    return row?.n ?? 0;
+  }
+
   findByEmail(email: Email): User | null {
     const row = this.db.select().from(users).where(eq(users.email, email.value)).get();
     return row ? toEntity(row) : null;
@@ -26,6 +35,10 @@ export class DrizzleUserRepository implements UserRepository {
   findById(id: string): User | null {
     const row = this.db.select().from(users).where(eq(users.id, id)).get();
     return row ? toEntity(row) : null;
+  }
+
+  listAll(): User[] {
+    return this.db.select().from(users).orderBy(asc(users.name), asc(users.id)).all().map(toEntity);
   }
 
   insert(user: User): void {
@@ -43,7 +56,20 @@ export class DrizzleUserRepository implements UserRepository {
         })
         .run();
     } catch (err) {
-      if (isUniqueEmailViolation(err)) throw new FirstAdminAlreadyExists();
+      if (isUniqueEmailViolation(err)) throw new EmailAlreadyInUse();
+      throw err;
+    }
+  }
+
+  update(user: User): void {
+    try {
+      this.db
+        .update(users)
+        .set({ name: user.name, email: user.email.value, role: user.role, status: user.status })
+        .where(eq(users.id, user.id))
+        .run();
+    } catch (err) {
+      if (isUniqueEmailViolation(err)) throw new EmailAlreadyInUse();
       throw err;
     }
   }

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FirstAdminAlreadyExists } from '../../src/application/auth/errors.js';
 import { Email } from '../../src/domain/user/Email.js';
+import { EmailAlreadyInUse } from '../../src/domain/user/errors.js';
 import { User } from '../../src/domain/user/User.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { createTestDb, type TestDb } from '../support/sqliteTestDb.js';
@@ -61,12 +61,13 @@ describe('DrizzleUserRepository', () => {
     expect(repo.findByEmail(Email.create('otro@empresa.com'))).toBeNull();
   });
 
-  // DrizzleUserRepository con email duplicado es rechazado como FirstAdminAlreadyExists
+  // DrizzleUserRepository con email duplicado es rechazado (FEAT-001). Desde FEAT-006 el repositorio
+  // lanza EmailAlreadyInUse; RegisterFirstAdmin lo traduce a FirstAdminAlreadyExists.
   it('test_drizzle_user_repository_email_duplicado_rechazado_first_admin_already_exists', () => {
     const repo = new DrizzleUserRepository(t.db);
     repo.insert(makeUser({ id: 'u-1', email: 'admin@empresa.com' }));
 
-    expect(() => { repo.insert(makeUser({ id: 'u-2', email: 'admin@empresa.com' })); }).toThrow(FirstAdminAlreadyExists);
+    expect(() => { repo.insert(makeUser({ id: 'u-2', email: 'admin@empresa.com' })); }).toThrow(EmailAlreadyInUse);
 
     expect(repo.countAll()).toBe(1);
     expect(repo.findById('u-2')).toBeNull();
@@ -81,7 +82,7 @@ describe('DrizzleUserRepository', () => {
     expect(() => repo.findByEmail(Email.create('admin@empresa.com'))).toThrow(/users\.created_at/);
   });
 
-  it('un UNIQUE de otra columna users.email_* no se traduce a FirstAdminAlreadyExists', () => {
+  it('un UNIQUE de otra columna users.email_* no se traduce a EmailAlreadyInUse', () => {
     const repo = new DrizzleUserRepository(t.db);
     const sqliteError = Object.assign(new Error('UNIQUE constraint failed: users.email_verified_token'), {
       code: 'SQLITE_CONSTRAINT_UNIQUE',
@@ -99,10 +100,10 @@ describe('DrizzleUserRepository', () => {
       caught = err;
     }
     expect(caught).toBe(wrapped);
-    expect(caught).not.toBeInstanceOf(FirstAdminAlreadyExists);
+    expect(caught).not.toBeInstanceOf(EmailAlreadyInUse);
   });
 
-  it('el UNIQUE exacto de users.email sí se traduce a FirstAdminAlreadyExists (también simulado)', () => {
+  it('el UNIQUE exacto de users.email sí se traduce a EmailAlreadyInUse (también simulado)', () => {
     const repo = new DrizzleUserRepository(t.db);
     const sqliteError = Object.assign(new Error('UNIQUE constraint failed: users.email'), {
       code: 'SQLITE_CONSTRAINT_UNIQUE',
@@ -111,7 +112,7 @@ describe('DrizzleUserRepository', () => {
       throw new Error('Failed query', { cause: sqliteError });
     });
 
-    expect(() => { repo.insert(makeUser()); }).toThrow(FirstAdminAlreadyExists);
+    expect(() => { repo.insert(makeUser()); }).toThrow(EmailAlreadyInUse);
   });
 
   it('un id duplicado no se confunde con un email duplicado y se propaga tal cual', () => {
@@ -125,7 +126,7 @@ describe('DrizzleUserRepository', () => {
       caught = err;
     }
     expect(caught).toBeInstanceOf(Error);
-    expect(caught).not.toBeInstanceOf(FirstAdminAlreadyExists);
+    expect(caught).not.toBeInstanceOf(EmailAlreadyInUse);
     expect(repo.countAll()).toBe(1);
   });
 });

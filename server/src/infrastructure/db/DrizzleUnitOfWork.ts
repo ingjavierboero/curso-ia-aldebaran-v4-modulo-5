@@ -1,5 +1,6 @@
 import type { TransactionalRepositories, UnitOfWork } from '../../application/shared/UnitOfWork.js';
 import type { Db } from './client.js';
+import { DrizzleSessionRepository } from './DrizzleSessionRepository.js';
 import { DrizzleUserRepository } from './DrizzleUserRepository.js';
 
 /**
@@ -12,6 +13,9 @@ export class DrizzleUnitOfWork implements UnitOfWork {
   constructor(private readonly db: Db) {}
 
   run<T>(fn: (repos: TransactionalRepositories) => T): T {
-    return this.db.transaction((tx) => fn({ users: new DrizzleUserRepository(tx) }), { behavior: 'immediate' });
+    return this.db.transaction(
+      (tx) => fn({ users: new DrizzleUserRepository(tx), sessions: new DrizzleSessionRepository(tx) }),
+      { behavior: 'immediate' },
+    );
   }
 }

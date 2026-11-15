@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { FirstAdminAlreadyExists } from '../../src/application/auth/errors.js';
+import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
+import { Email } from '../../src/domain/user/Email.js';
 import { InvalidEmail, InvalidName, WeakPassword } from '../../src/domain/user/errors.js';
+import { User } from '../../src/domain/user/User.js';
 import { createAuthContext } from '../support/authContext.js';
+import { FakeClock } from '../support/FakeClock.js';
+import { FakePasswordHasher } from '../support/FakePasswordHasher.js';
+import { InMemorySessionRepository } from '../support/InMemorySessionRepository.js';
+import { InMemoryUnitOfWork } from '../support/InMemoryUnitOfWork.js';
+import { InMemoryUserRepository } from '../support/InMemoryUserRepository.js';
+import { SequentialIdGenerator } from '../support/SequentialIdGenerator.js';
 
 const VALID = { name: 'Ana Pérez', email: 'admin@empresa.com', password: 'contraseña-segura' };
 
@@ -82,5 +91,36 @@ describe('RegisterFirstAdmin', () => {
     await expect(ctx.registerFirstAdmin.execute(VALID)).rejects.toBeInstanceOf(FirstAdminAlreadyExists);
     expect(ctx.hasher.hashCalls).toHaveLength(1);
     expect(ctx.users.all().map((u) => u.id)).toEqual(['ganador']);
+  });
+
+  // El repositorio lanza EmailAlreadyInUse; el caso de uso lo sigue informando como FirstAdminAlreadyExists
+  it('test_register_first_admin_email_duplicado_sigue_siendo_ya_existe', async () => {
+    // Simula la carrera que solo resuelve el UNIQUE de email: el conteo dice 0 pero el email ya está.
+    class RacingUserRepository extends InMemoryUserRepository {
+      override countAll(): number {
+        return 0;
+      }
+    }
+    const users = new RacingUserRepository();
+    users.insert(
+      new User({
+        id: 'ganador',
+        name: 'Otro Admin',
+        email: Email.create(VALID.email),
+        role: 'admin',
+        status: 'activo',
+        passwordHash: 'h',
+        createdAt: new Date('2026-11-04T12:00:00.000Z'),
+      }),
+    );
+    const registerFirstAdmin = new RegisterFirstAdmin({
+      uow: new InMemoryUnitOfWork(users, new InMemorySessionRepository()),
+      hasher: new FakePasswordHasher(),
+      ids: new SequentialIdGenerator(),
+      clock: new FakeClock(),
+    });
+
+    await expect(registerFirstAdmin.execute(VALID)).rejects.toBeInstanceOf(FirstAdminAlreadyExists);
+    expect(users.all().map((u) => u.id)).toEqual(['ganador']);
   });
 });

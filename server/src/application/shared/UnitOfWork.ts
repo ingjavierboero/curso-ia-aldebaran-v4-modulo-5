@@ -1,7 +1,9 @@
+import type { SessionRepository } from '../../domain/auth/SessionRepository.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';
 
 export interface TransactionalRepositories {
   users: UserRepository;
+  sessions: SessionRepository;
 }
 
 /**
