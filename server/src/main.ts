@@ -9,6 +9,11 @@ import { PeekSession } from './application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from './application/auth/RegisterFirstAdmin.js';
 import { GetHealth } from './application/health/GetHealth.js';
 import { JobRegistry } from './application/health/JobRegistry.js';
+import { CreateUser } from './application/user/CreateUser.js';
+import { DeactivateUser } from './application/user/DeactivateUser.js';
+import { ListUsers } from './application/user/ListUsers.js';
+import { ReactivateUser } from './application/user/ReactivateUser.js';
+import { UpdateUser } from './application/user/UpdateUser.js';
 import { Argon2PasswordHasher } from './infrastructure/auth/Argon2PasswordHasher.js';
 import { CryptoSessionTokenGenerator } from './infrastructure/auth/CryptoSessionTokenGenerator.js';
 import { UuidGenerator } from './infrastructure/auth/UuidGenerator.js';
@@ -71,6 +76,11 @@ async function main(): Promise<void> {
       log: createHealthEventLog(logger, clock),
     }),
     peekSession: new PeekSession({ users, sessions, tokens, clock }),
+    listUsers: new ListUsers({ users }),
+    createUser: new CreateUser({ uow, hasher, ids, clock }),
+    updateUser: new UpdateUser({ uow }),
+    deactivateUser: new DeactivateUser({ uow }),
+    reactivateUser: new ReactivateUser({ uow }),
     clock,
     logger,
   });

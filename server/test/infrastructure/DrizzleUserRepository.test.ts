@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Email } from '../../src/domain/user/Email.js';
 import { EmailAlreadyInUse } from '../../src/domain/user/errors.js';
-import { User } from '../../src/domain/user/User.js';
+import { User, type UserRole } from '../../src/domain/user/User.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { createTestDb, type TestDb } from '../support/sqliteTestDb.js';
 
-function makeUser(overrides: Partial<{ id: string; email: string; status: 'activo' | 'inactivo' }> = {}): User {
+function makeUser(
+  overrides: Partial<{ id: string; name: string; email: string; role: UserRole; status: 'activo' | 'inactivo' }> = {},
+): User {
   return new User({
     id: overrides.id ?? 'u-1',
-    name: 'Ana Pérez',
+    name: overrides.name ?? 'Ana Pérez',
     email: Email.create(overrides.email ?? 'admin@empresa.com'),
-    role: 'admin',
+    role: overrides.role ?? 'admin',
     status: overrides.status ?? 'activo',
     passwordHash: '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA',
     createdAt: new Date('2026-11-04T12:34:56.789Z'),
@@ -71,6 +73,82 @@ describe('DrizzleUserRepository', () => {
 
     expect(repo.countAll()).toBe(1);
     expect(repo.findById('u-2')).toBeNull();
+  });
+
+  // FEAT-006: el UNIQUE de users.email se traduce a EmailAlreadyInUse en insert y en update (SQLite real)
+  it('test_user_repository_email_duplicado_lanza_email_already_in_use', () => {
+    const repo = new DrizzleUserRepository(t.db);
+    repo.insert(makeUser({ id: 'u-1', email: 'ana@empresa.com' }));
+    repo.insert(makeUser({ id: 'u-2', email: 'eva@empresa.com' }));
+
+    expect(() => {
+      repo.insert(makeUser({ id: 'u-3', email: 'ana@empresa.com' }));
+    }).toThrow(EmailAlreadyInUse);
+    expect(repo.findById('u-3')).toBeNull();
+
+    const eva = repo.findById('u-2');
+    expect(eva).not.toBeNull();
+    expect(() => {
+      repo.update((eva as User).withProfile({ name: 'Eva', email: Email.create('ana@empresa.com'), role: 'editor' }));
+    }).toThrow(EmailAlreadyInUse);
+    expect(repo.findById('u-2')?.email.value).toBe('eva@empresa.com');
+    expect(repo.findById('u-2')?.role).toBe('admin');
+    expect(repo.countAll()).toBe(2);
+  });
+
+  it('update cambia nombre, email, perfil y estado sin tocar password_hash ni created_at', () => {
+    const repo = new DrizzleUserRepository(t.db);
+    repo.insert(makeUser({ id: 'u-1', email: 'ana@empresa.com' }));
+    const original = repo.findById('u-1') as User;
+    // una entidad con hash y fecha distintos: update no debe escribirlos
+    const tampered = new User({
+      id: 'u-1',
+      name: 'Ana Gómez',
+      email: Email.create('ana.gomez@empresa.com'),
+      role: 'consulta',
+      status: 'inactivo',
+      passwordHash: 'otro-hash',
+      createdAt: new Date('2030-01-01T00:00:00.000Z'),
+    });
+
+    repo.update(tampered);
+
+    const row = t.db.$client
+      .prepare('SELECT name, email, role, status, password_hash, created_at FROM users WHERE id = ?')
+      .get('u-1');
+    expect(row).toEqual({
+      name: 'Ana Gómez',
+      email: 'ana.gomez@empresa.com',
+      role: 'consulta',
+      status: 'inactivo',
+      password_hash: original.passwordHash,
+      created_at: '2026-11-04T12:34:56.789Z',
+    });
+  });
+
+  it('listAll devuelve Activos e Inactivos ordenados por nombre', () => {
+    const repo = new DrizzleUserRepository(t.db);
+    repo.insert(makeUser({ id: 'u-1', name: 'Carla', email: 'carla@empresa.com' }));
+    repo.insert(makeUser({ id: 'u-2', name: 'Ana', email: 'ana@empresa.com', status: 'inactivo' }));
+    repo.insert(makeUser({ id: 'u-3', name: 'Beto', email: 'beto@empresa.com', role: 'editor' }));
+
+    const all = repo.listAll();
+
+    expect(all.map((u) => u.name)).toEqual(['Ana', 'Beto', 'Carla']);
+    expect(all.every((u) => u instanceof User)).toBe(true);
+    expect(all.map((u) => u.status)).toEqual(['inactivo', 'activo', 'activo']);
+  });
+
+  it('countActiveAdmins cuenta solo los de perfil admin y estado activo', () => {
+    const repo = new DrizzleUserRepository(t.db);
+    expect(repo.countActiveAdmins()).toBe(0);
+    repo.insert(makeUser({ id: 'u-1', email: 'a1@empresa.com', role: 'admin', status: 'activo' }));
+    repo.insert(makeUser({ id: 'u-2', email: 'a2@empresa.com', role: 'admin', status: 'activo' }));
+    repo.insert(makeUser({ id: 'u-3', email: 'a3@empresa.com', role: 'admin', status: 'inactivo' }));
+    repo.insert(makeUser({ id: 'u-4', email: 'e1@empresa.com', role: 'editor', status: 'activo' }));
+    repo.insert(makeUser({ id: 'u-5', email: 'c1@empresa.com', role: 'consulta', status: 'activo' }));
+
+    expect(repo.countActiveAdmins()).toBe(2);
   });
 
   it('findById y findByEmail lanzan si created_at no es un ISO 8601 válido (no hidrata Invalid Date)', () => {

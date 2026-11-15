@@ -22,10 +22,18 @@ describe('Authorization', () => {
     }
   });
 
+  it('la tabla de permisos no se expone fuera del módulo', async () => {
+    const mod: Record<string, unknown> = await import('../../src/domain/auth/Authorization.js');
+
+    expect(mod).not.toHaveProperty('PERMISSIONS');
+  });
+
   it('deny-by-default: un perfil desconocido en tiempo de ejecución no tiene ningún permiso', () => {
     const unknownRole = 'superadmin' as UserRole;
 
     expect(can(unknownRole, 'users.read')).toBe(false);
+    // ni las propiedades heredadas de Object.prototype cuentan como perfil
+    expect(can('toString' as UserRole, 'users.read')).toBe(false);
     expect(() => { assertCan(unknownRole, 'users.manage'); }).toThrow(Forbidden);
   });
 });

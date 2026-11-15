@@ -8,12 +8,12 @@ import { createTestDb, type TestDb } from '../support/sqliteTestDb.js';
 
 const CREATED = new Date('2026-11-04T12:00:00.000Z');
 
-function seedUser(t: TestDb): void {
+function seedUser(t: TestDb, id = 'u-1', email = 'admin@empresa.com'): void {
   new DrizzleUserRepository(t.db).insert(
     new User({
-      id: 'u-1',
+      id,
       name: 'Ana',
-      email: Email.create('admin@empresa.com'),
+      email: Email.create(email),
       role: 'admin',
       status: 'activo',
       passwordHash: 'h',
@@ -22,8 +22,13 @@ function seedUser(t: TestDb): void {
   );
 }
 
-function makeSession(id = 's-1', tokenHash = 'a'.repeat(64)): Session {
-  return new Session({ id, userId: 'u-1', tokenHash, createdAt: CREATED, lastActivityAt: CREATED });
+function makeSession(id = 's-1', tokenHash = 'a'.repeat(64), userId = 'u-1'): Session {
+  return new Session({ id, userId, tokenHash, createdAt: CREATED, lastActivityAt: CREATED });
+}
+
+function sessionIds(t: TestDb): string[] {
+  const rows = t.db.$client.prepare('SELECT id FROM sessions ORDER BY id').all() as { id: string }[];
+  return rows.map((r) => r.id);
 }
 
 describe('DrizzleSessionRepository', () => {
@@ -68,6 +73,24 @@ describe('DrizzleSessionRepository', () => {
     expect(t.db.$client.prepare('SELECT COUNT(*) AS n FROM sessions').get()).toEqual({ n: 0 });
     // borrar algo inexistente no lanza
     expect(() => { repo.delete('s-1'); }).not.toThrow();
+  });
+
+  // FEAT-006 (FR-07): deleteByUserId borra todas las sesiones del usuario, solo las suyas, y devuelve cuántas
+  it('test_session_repository_delete_by_user_id_borra_solo_las_suyas', () => {
+    seedUser(t, 'u-2', 'otro@empresa.com');
+    const repo = new DrizzleSessionRepository(t.db);
+    repo.insert(makeSession('s-1', '1'.repeat(64), 'u-1'));
+    repo.insert(makeSession('s-2', '2'.repeat(64), 'u-1'));
+    repo.insert(makeSession('s-3', '3'.repeat(64), 'u-2'));
+
+    expect(repo.deleteByUserId('u-1')).toBe(2);
+
+    expect(sessionIds(t)).toEqual(['s-3']);
+    expect(repo.findByTokenHash('1'.repeat(64))).toBeNull();
+    expect(repo.findByTokenHash('3'.repeat(64))?.userId).toBe('u-2');
+    // sin sesiones (o usuario inexistente) no lanza y devuelve 0
+    expect(repo.deleteByUserId('u-1')).toBe(0);
+    expect(repo.deleteByUserId('no-existe')).toBe(0);
   });
 
   it('findByTokenHash lanza si last_activity_at o created_at no es un ISO 8601 válido (no hidrata Invalid Date)', () => {
