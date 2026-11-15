@@ -24,6 +24,17 @@ if (typeof window.matchMedia !== 'function') {
   });
 }
 
+// jsdom tampoco implementa ResizeObserver y antd (Table, Popconfirm) lo usa: un doble que no
+// observa nada alcanza, porque en jsdom no hay layout que cambie de tamaño.
+if (typeof window.ResizeObserver !== 'function') {
+  class ResizeObserverStub implements ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  Object.defineProperty(window, 'ResizeObserver', { writable: true, value: ResizeObserverStub });
+}
+
 // Estado global de la app: cada test arranca sin usuario y sin handler de 401 de un router anterior.
 beforeEach(() => {
   resetAuthStore();

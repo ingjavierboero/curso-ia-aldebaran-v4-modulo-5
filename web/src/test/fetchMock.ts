@@ -92,6 +92,22 @@ export const ANA = {
   status: 'activo',
 } as const;
 
+export const EVA = {
+  id: 'u-2',
+  name: 'Eva Editora',
+  email: 'eva@aldebaran.test',
+  role: 'editor',
+  status: 'activo',
+} as const;
+
+export const CARLOS = {
+  id: 'u-3',
+  name: 'Carlos Consulta',
+  email: 'carlos@aldebaran.test',
+  role: 'consulta',
+  status: 'inactivo',
+} as const;
+
 export const SESSION_401 = { status: 401, body: { error: 'Sesión no válida' } } as const;
 
 /** `GET /api/health` con todo sano: la pantalla principal lo consulta al montar (`HealthBanner`). */

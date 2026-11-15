@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useAuthStore } from '../store/authStore';
-import { ANA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
+import { ANA, CARLOS, EVA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
 
 describe('HomePage', () => {
@@ -23,6 +23,88 @@ describe('HomePage', () => {
     expect(fetchMock.callsTo('GET', '/api/health')[0]?.init?.credentials).toBe('include');
     expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2);
     expect(fetchMock.callsTo('GET', '/api/auth/session')[1]?.init?.credentials).toBe('include');
+  });
+
+  // El acceso a la pantalla de usuarios se ofrece solo a un Admin (FR-13).
+  it('test_home_muestra_acceso_a_usuarios_solo_a_admin', async () => {
+    for (const visitor of [EVA, { ...CARLOS, status: 'activo' as const }]) {
+      mockFetch({
+        'GET /api/auth/session': { status: 200, body: { user: visitor } },
+        'GET /api/health': HEALTH_OK,
+      });
+      const { view } = renderApp('/');
+      expect(await screen.findByRole('heading', { name: `Hola, ${visitor.name}` })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Usuarios' })).not.toBeInTheDocument();
+      view.unmount();
+    }
+
+    mockFetch({
+      'GET /api/auth/session': { status: 200, body: { user: ANA } },
+      'GET /api/health': HEALTH_OK,
+      'GET /api/users': { status: 200, body: { users: [ANA, EVA] } },
+    });
+    const { router, user } = renderApp('/');
+    expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Usuarios' }));
+
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/usuarios'); });
+    // Por texto y no por rol: con la tabla de antd montada, `*ByRole('row')` es muy lento en jsdom.
+    expect((await screen.findByText('eva@aldebaran.test')).closest('tr')).toHaveTextContent('Eva Editora');
+  });
+
+  it('la revalidación por focus actualiza el perfil y saca el acceso a usuarios a quien dejó de ser Admin', async () => {
+    mockFetch({
+      'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, { status: 200, body: { user: { ...ANA, role: 'consulta' } } }],
+      'GET /api/health': HEALTH_OK,
+    });
+    renderApp('/');
+
+    expect(await screen.findByRole('button', { name: 'Usuarios' })).toBeInTheDocument();
+    act(() => {
+      fireEvent.focus(window);
+    });
+
+    await waitFor(() => { expect(useAuthStore.getState().user?.role).toBe('consulta'); });
+    expect(screen.queryByRole('button', { name: 'Usuarios' })).not.toBeInTheDocument();
+  });
+
+  it('un error de red en la revalidación por focus no saca al usuario de la pantalla', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, 'network-error'],
+      'GET /api/health': HEALTH_OK,
+    });
+    const { router } = renderApp('/');
+
+    expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.focus(window);
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(fetchMock.callsTo('GET', '/api/auth/session')).toHaveLength(2);
+    expect(router.state.location.pathname).toBe('/');
+    expect(useAuthStore.getState().status).toBe('authed');
+    expect(screen.getByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+  });
+
+  it('un error del servidor al cerrar sesión se informa y deja volver a intentar', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/auth/session': { status: 200, body: { user: ANA } },
+      'GET /api/health': HEALTH_OK,
+      'POST /api/auth/logout': { status: 503, body: { error: 'caído' } },
+    });
+    const { router, user } = renderApp('/');
+
+    expect(await screen.findByRole('heading', { name: 'Hola, Ana Admin' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByText('No se pudo conectar con el servidor')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+    expect(useAuthStore.getState().status).toBe('authed');
+    // `/Cerrar sesión/`: en jsdom el ícono de carga de antd puede quedar en el nombre accesible.
+    await waitFor(() => { expect(screen.getByRole('button', { name: /Cerrar sesión/ })).toBeEnabled(); });
+    expect(fetchMock.callsTo('POST', '/api/auth/logout')).toHaveLength(1);
   });
 
   // HomePage al cerrar sesión navega a /login

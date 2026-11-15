@@ -1,10 +1,31 @@
+/** Perfil de un usuario (FEAT-006): define lo que puede hacer. */
+export type UserRole = 'admin' | 'editor' | 'consulta';
+
+/** Estado de un usuario: un Inactivo no inicia sesión. */
+export type UserStatus = 'activo' | 'inactivo';
+
 /** Lo único que el server devuelve de un usuario (FR-08). Lo comparten `api/` y `store/`. */
 export interface PublicUser {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'editor' | 'consulta';
-  status: 'activo' | 'inactivo';
+  role: UserRole;
+  status: UserStatus;
+}
+
+/** Body de `POST /api/users`: el usuario queda Activo. */
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  password: string;
+}
+
+/** Body de `PATCH /api/users/:id`: al menos uno de los campos. */
+export interface UpdateUserInput {
+  name?: string;
+  email?: string;
+  role?: UserRole;
 }
 
 /** Estado de un proceso automático, tal como lo informa `GET /api/health` a un usuario con sesión. */
