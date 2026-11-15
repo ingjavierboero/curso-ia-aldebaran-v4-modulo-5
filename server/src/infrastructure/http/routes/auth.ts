@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type RequestHandler, type Response } from 'express';
 import type { ChangeOwnPassword } from '../../../application/auth/ChangeOwnPassword.js';
 import { IncorrectCurrentPassword, InvalidCredentials } from '../../../application/auth/errors.js';
 import type { Login } from '../../../application/auth/Login.js';
@@ -9,6 +9,8 @@ import { InvalidEmail, PasswordUnchanged, WeakPassword } from '../../../domain/u
 import { PasswordPolicy } from '../../../domain/user/PasswordPolicy.js';
 import { type AuthOutcome, type Logger, logAuthAttempt } from '../authLog.js';
 import { bodyObject, InvalidBody, requiredString } from '../body.js';
+import type { AttemptTracker } from '../rateLimit/AttemptTracker.js';
+import { attemptKey } from '../rateLimit/attemptGate.js';
 import { sessionContext } from '../sessionContext.js';
 import { clearSessionCookie, setSessionCookie } from '../sessionCookie.js';
 
@@ -19,6 +21,14 @@ export interface AuthRoutesDeps {
   clock: Clock;
   logger: Logger;
   secureCookie: boolean;
+  /** Compuerta del límite de intentos del login (FEAT-009): la crea `createApp`, una por app. */
+  loginGate: RequestHandler;
+  /** Registro de fallos del login: solo `InvalidCredentials` cuenta (FR-02). */
+  loginTracker: AttemptTracker;
+  /** Compuerta del límite de intentos del cambio de contraseña (FEAT-009). */
+  passwordChangeGate: RequestHandler;
+  /** Registro de fallos del cambio: solo `IncorrectCurrentPassword` cuenta (FR-03). */
+  passwordChangeTracker: AttemptTracker;
 }
 
 /**
@@ -27,8 +37,10 @@ export interface AuthRoutesDeps {
  */
 export function authRoutes(deps: AuthRoutesDeps): Router {
   const router = Router();
+  const { loginGate, loginTracker, passwordChangeGate, passwordChangeTracker } = deps;
 
-  router.post('/auth/login', async (req: Request, res: Response) => {
+  // FEAT-009: la compuerta corre antes del handler; bloqueada, responde 429 sin verificar nada.
+  router.post('/auth/login', loginGate, async (req: Request, res: Response) => {
     const body = bodyObject(req.body);
     const email = requiredString(body, 'email', Email.MAX_LENGTH);
     // Tope de 1024 acá y no en `Login`: aplicar `PasswordPolicy` en el caso de uso daría 400 a una
@@ -39,10 +51,13 @@ export function authRoutes(deps: AuthRoutesDeps): Router {
     try {
       result = await deps.login.execute({ email, password });
     } catch (err) {
+      // Solo las credenciales incorrectas cuentan como fallo; un email con formato inválido no (FR-02).
+      if (err instanceof InvalidCredentials) loginTracker.fail(attemptKey(req));
       const outcome = err instanceof InvalidCredentials || err instanceof InvalidEmail ? 'invalid' : 'error';
       logAuthAttempt(deps.logger, deps.clock, req, 'login', outcome, email);
       throw err;
     }
+    loginTracker.succeed(attemptKey(req));
     logAuthAttempt(deps.logger, deps.clock, req, 'login', 'ok', email);
 
     setSessionCookie(res, result.token, deps.secureCookie);
@@ -57,7 +72,8 @@ export function authRoutes(deps: AuthRoutesDeps): Router {
 
   // FEAT-007: cambio de la propia contraseña. Todo, incluido el parseo del body, dentro del `try`
   // que registra el intento (FR-09). El email del log es el de la sesión; nunca una contraseña.
-  router.post('/auth/password', async (req: Request, res: Response) => {
+  // FEAT-009: `authMiddleware` ya corrió a nivel `/api`; la compuerta va antes del handler.
+  router.post('/auth/password', passwordChangeGate, async (req: Request, res: Response) => {
     // El de la sesión, tomado antes del body para que un body inválido también lo registre. Sin
     // sesión, `sessionContext` lanza y el intento queda con email `null` (`''` no es un email).
     let email = '';
@@ -76,9 +92,12 @@ export function authRoutes(deps: AuthRoutesDeps): Router {
         newPassword,
       });
     } catch (err) {
+      // Solo la contraseña actual incorrecta cuenta como fallo; la nueva inválida no (FR-03).
+      if (err instanceof IncorrectCurrentPassword) passwordChangeTracker.fail(attemptKey(req));
       logAuthAttempt(deps.logger, deps.clock, req, 'password_change', passwordChangeOutcome(err), email);
       throw err;
     }
+    passwordChangeTracker.succeed(attemptKey(req));
     logAuthAttempt(deps.logger, deps.clock, req, 'password_change', 'ok', email);
     res.status(204).end();
   });
