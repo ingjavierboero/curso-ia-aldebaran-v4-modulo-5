@@ -1,0 +1,22 @@
+# Dependabot: actualizaciones de versión semanales para npm y GitHub Actions.
+# Un solo PR agrupado por ecosistema por semana (límite 1 abierto a la vez).
+# Las actualizaciones de seguridad no pasan por acá: Dependabot las abre aparte.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 1
+    groups:
+      npm-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns: ["*"]
