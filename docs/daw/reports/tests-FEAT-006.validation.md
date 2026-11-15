@@ -3,7 +3,7 @@
 ────────────────────────────────────────────────────────────────
   ✅ F-TEST-07: the report describes one run
   ✅ F-TEST-01: runner and command named: vitest 5.1.0 (cobertura con @vitest/coverage-v8 5.1.0) — `npx vitest run --coverage.enabled --coverage.pro`
-  ✅ F-TEST-02: 331 test(s): 331 passed, 0 failed, 0 skipped — and they add up
+  ✅ F-TEST-02: 333 test(s): 333 passed, 0 failed, 0 skipped — and they add up
   ✅ F-TEST-08: no failing tests
   ✅ F-TEST-03: no failures to name
   ✅ F-TEST-04: coverage stated: line 94%, branch 91%, function 96%

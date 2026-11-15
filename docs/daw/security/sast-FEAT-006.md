@@ -6,7 +6,7 @@
 | Tools | revisión del diff `main..HEAD` (grep de patrones + lectura), `npm audit` (npm 11.21.1), `oxlint --type-aware` |
 | Date | 2026-11-15 |
 
-Alcance: el diff de `feat/FEAT-006-usuarios-y-perfiles` contra `main` (HEAD `599e5f3`): dominio
+Alcance: el diff de `feat/FEAT-006-usuarios-y-perfiles` contra `main` (HEAD `063bda1`; la vuelta desde VERIFY solo agrega 2 tests de aplicación, sin cambios de código de producto): dominio
 (`domain/auth/Authorization.ts`, `domain/auth/errors.ts`, `domain/user/{User,AdminPolicy,errors,UserRepository}.ts`),
 aplicación (`application/user/*`, `application/shared/Actor.ts`, `RegisterFirstAdmin.ts`), infraestructura
 (`DrizzleUserRepository.ts`, `DrizzleSessionRepository.ts`, `DrizzleUnitOfWork.ts`, `schema.ts`,
