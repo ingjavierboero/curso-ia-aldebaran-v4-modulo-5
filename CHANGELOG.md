@@ -16,6 +16,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - [FEAT-003] Consulta de salud `GET`/`HEAD /api/health`: sin sesión responde solo el estado general (200 ok / 503 degradado); con sesión, el detalle de la base y de cada proceso automático. Con la base caída responde en menos de 1 s y sin validar la sesión.
 - [FEAT-003] Registro de corridas de procesos automáticos (tabla `job_runs`): un proceso cuenta como atrasado tras más de 2 intervalos sin corrida exitosa, y una última corrida con error también degrada el estado.
 - [FEAT-003] Banner en la pantalla principal que nombra lo degradado (base de datos o procesos) y se actualiza cada 60 s. La consulta no renueva la sesión.
+- [FEAT-005] Dependabot (`.github/dependabot.yml`): una vez por semana propone las actualizaciones de las dependencias npm (raíz, cubre `server/` y `web/`) y de las acciones del CI, agrupadas en un solo PR por ecosistema y con como máximo 1 abierto a la vez. Las acciones siguen fijadas por SHA.
 
 ### Changed
 - [FIX-001] La pantalla de login se titula "Iniciar sesión en Aldebaran".
