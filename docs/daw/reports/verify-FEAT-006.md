@@ -1,6 +1,6 @@
 # Verification FEAT-006
 
-Verificación cruzada PRD ↔ spec ↔ código ↔ tests hecha por `daw-module-verifier` (agente que no escribió el código), sobre `0a50644`. `npx vitest run` 331/331 en 56 archivos.
+Verificación cruzada PRD ↔ spec ↔ código ↔ tests hecha por `daw-module-verifier` (agente que no escribió el código), ronda 1 sobre `0a50644`; ronda 2 (vuelta corta por W-2) sobre `2494548`, sin cambios de código de producto. `npx vitest run` 333/333 en 56 archivos.
 
 | Field | Value |
 |---|---|
@@ -41,9 +41,11 @@ Verificación cruzada PRD ↔ spec ↔ código ↔ tests hecha por `daw-module-v
 - ✅ Sad-path tests: cada ruta y caso de uso tiene entrada inválida probada — 400 de forma (`test_users_alta_body_invalido_400`, `test_users_modificar_sin_campos_invalido_400`), 403 (`test_users_editor_y_consulta_no_autorizado_403_sin_datos`), 404 (`test_users_inexistente_404`), 409 (`test_users_alta_email_duplicado_409`, `test_users_ultimo_admin_baja_o_cambio_de_perfil_409`), 415; en la web, red y forma inválida (`test_users_page_error_de_red_conserva_listado`, `test_users_api_respuesta_invalida_es_network_error`).
 - ✅ TDD: reconstrucción independiente contra `main` — 52/53 Required tests en rojo (39 por módulo inexistente, 13 por aserción); el 53.º (`test_user_repository_email_duplicado_lanza_email_already_in_use`) queda verde contra main por un artefacto de import, y su rojo se demostró por mutación en Block 2. 15 mutaciones sobre HEAD: 12 detectadas.
 
+## Ronda 2
+- ✅ W-2 de la ronda 1 cerrado: `test_update_user_actor_desactualizado_rechazado` y `test_reactivate_user_actor_desactualizado_rechazado` (commit `063bda1`) fallan con `requireActor` quitado de `UpdateUser.ts:38` o `ReactivateUser.ts:23` y pasan con el código real; el verificador lo reprodujo de forma independiente. `git diff eba741c..HEAD -- server/src web/src` vacío.
+
 ## Warnings (no bloquean)
 - ⚠️ W-1: AC-07 se prueba Admin→Editor por HTTP; el caso literal Editor→Consulta no es observable hoy porque ambos perfiles tienen los mismos permisos.
-- ⚠️ W-2: `requireActor` en `UpdateUser` y `ReactivateUser` no lo fija ningún test (quitarlo deja 331/331); riesgo práctico bajo (casos de uso síncronos y `authMiddleware` relee al actor), pero el contrato de la spec no está anclado.
 - ⚠️ W-3: helpers de `UsersPage.test.tsx` atados al DOM de antd (`.ant-modal-title`, `closest('tr')`) y un `setTimeout(50)` para una aserción negativa (deuda aceptada en decisions-FEAT-006.md).
 - ⚠️ W-4: artefacto de reconstrucción TDD del test de email duplicado del repositorio (informativo).
 
