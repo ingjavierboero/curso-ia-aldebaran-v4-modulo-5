@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mockFetch } from '../test/fetchMock';
 import * as authApi from './authApi';
-import { NETWORK_ERROR_MESSAGE, NetworkError, getSession } from './authApi';
+import { NETWORK_ERROR_MESSAGE, NetworkError, changePassword, getSession } from './authApi';
 import * as client from './client';
 
 describe('authApi', () => {
@@ -32,5 +32,18 @@ describe('authApi', () => {
 
     // Constructor por defecto.
     expect(new NetworkError().status).toBeNull();
+  });
+
+  // changePassword hace POST /api/auth/password con los dos campos y resuelve con el 204 (AC-03).
+  it('test_auth_api_change_password_envia_post', async () => {
+    const fetchMock = mockFetch({ 'POST /api/auth/password': { status: 204 } });
+
+    await expect(changePassword({ currentPassword: 'vieja-123', newPassword: 'nueva-456' })).resolves.toBeUndefined();
+
+    const calls = fetchMock.callsTo('POST', '/api/auth/password');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.body).toEqual({ currentPassword: 'vieja-123', newPassword: 'nueva-456' });
+    expect(calls[0]?.init?.credentials).toBe('include');
+    expect(new Headers(calls[0]?.init?.headers).get('Content-Type')).toBe('application/json');
   });
 });

@@ -27,9 +27,9 @@ function readLayoutNotice(state: unknown): LayoutNotice | null {
 }
 
 /**
- * Marco de las pantallas con sesión: header (marca, nombre, acceso a usuarios solo para Admin y
- * "Cerrar sesión") y el banner de salud. El botón "Usuarios" es UX: la autorización real es la del
- * server (FEAT-006, FR-13).
+ * Marco de las pantallas con sesión: header (marca, nombre, "Mi perfil" para todos los perfiles,
+ * acceso a usuarios solo para Admin y "Cerrar sesión") y el banner de salud. El botón "Usuarios"
+ * es UX: la autorización real es la del server (FEAT-006, FR-13).
  */
 export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -96,6 +96,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Brand>
         <Space>
           <HeaderText $color={token.colorTextLightSolid}>{user?.name}</HeaderText>
+          <Button
+            onClick={() => {
+              void navigate('/perfil');
+            }}
+          >
+            Mi perfil
+          </Button>
           {user?.role === 'admin' && (
             <Button
               onClick={() => {

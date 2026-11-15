@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import { ApiError, errorText, getSession } from '../api/authApi';
 import type { PublicUser, UserRole } from '../api/types';
 import {
+  ROLE_LABELS,
   USER_EMAIL_MAX_LENGTH,
   USER_NAME_MAX_LENGTH,
   USER_PASSWORD_MIN_LENGTH,
@@ -14,8 +15,6 @@ import {
 import { createUser, deactivateUser, listUsers, reactivateUser, updateUser } from '../api/usersApi';
 import { AppLayout, layoutNoticeState } from '../components/AppLayout';
 import { useAuthStore } from '../store/authStore';
-
-const ROLE_LABELS: Record<UserRole, string> = { admin: 'Admin', editor: 'Editor', consulta: 'Consulta' };
 
 const ROLE_OPTIONS = USER_ROLES.map((role) => ({ label: ROLE_LABELS[role], value: role }));
 

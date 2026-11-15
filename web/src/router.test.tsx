@@ -58,4 +58,31 @@ describe('router', () => {
     expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('anon');
   });
+
+  // /perfil sin sesión es rechazado y redirige a /login (FR-01); con sesión, la pantalla se queda en /perfil.
+  it('test_router_perfil_sin_sesion_no_autorizado', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/auth/session': SESSION_401,
+      'POST /api/auth/password': { status: 204 },
+    });
+    const { router, view } = renderApp('/perfil');
+
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/login'); });
+    expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Mi perfil' })).not.toBeInTheDocument();
+    expect(useAuthStore.getState().status).toBe('anon');
+    expect(fetchMock.callsTo('POST', '/api/auth/password')).toHaveLength(0);
+    view.unmount();
+
+    // Contraste: la redirección depende de la sesión; con sesión, /perfil muestra la pantalla.
+    mockFetch({
+      'GET /api/auth/session': { status: 200, body: { user: EVA } },
+      'GET /api/health': HEALTH_OK,
+      'POST /api/auth/password': { status: 204 },
+    });
+    const withSession = renderApp('/perfil');
+    expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument();
+    expect(withSession.router.state.location.pathname).toBe('/perfil');
+  });
 });

@@ -8,8 +8,12 @@ import type { UserRole, UserStatus } from './types';
 /** Los perfiles, en el orden en que se ofrecen (FR-02). */
 export const USER_ROLES: readonly UserRole[] = ['admin', 'editor', 'consulta'];
 
+/** Cómo se muestra cada perfil en pantalla. */
+export const ROLE_LABELS: Readonly<Record<UserRole, string>> = { admin: 'Admin', editor: 'Editor', consulta: 'Consulta' };
+
 export const USER_STATUSES: readonly UserStatus[] = ['activo', 'inactivo'];
 
 export const USER_NAME_MAX_LENGTH = 100;
 export const USER_EMAIL_MAX_LENGTH = 254;
 export const USER_PASSWORD_MIN_LENGTH = 8;
+export const USER_PASSWORD_MAX_LENGTH = 1024;
