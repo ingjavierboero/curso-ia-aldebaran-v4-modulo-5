@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { CLIENT_STATUSES } from '../../domain/client/Client.js';
-import { IVA_CONDITIONS } from '../../domain/client/IvaCondition.js';
+import { IVA_CONDITIONS } from '../../domain/shared/IvaCondition.js';
 import { CURRENCIES } from '../../domain/product/Price.js';
 import { PRODUCT_STATUSES } from '../../domain/product/Product.js';
 import { USER_ROLES, USER_STATUSES } from '../../domain/user/User.js';

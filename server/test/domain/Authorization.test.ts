@@ -44,6 +44,21 @@ describe('Authorization', () => {
     expect(can('consulta', 'users.read')).toBe(false);
   });
 
+  // Los tres perfiles leen la configuración; solo Admin la cambia (FR-12, AC-13)
+  it('test_authorization_permisos_de_configuracion', () => {
+    for (const role of ['admin', 'editor', 'consulta'] as const) {
+      expect(can(role, 'settings.read'), `${role} settings.read`).toBe(true);
+      expect(() => { assertCan(role, 'settings.read'); }).not.toThrow();
+    }
+
+    expect(can('admin', 'settings.manage')).toBe(true);
+    expect(() => { assertCan('admin', 'settings.manage'); }).not.toThrow();
+    for (const role of ['editor', 'consulta'] as const) {
+      expect(can(role, 'settings.manage'), `${role} settings.manage`).toBe(false);
+      expect(() => { assertCan(role, 'settings.manage'); }).toThrow(Forbidden);
+    }
+  });
+
   it('la tabla de permisos no se expone fuera del módulo', async () => {
     const mod: Record<string, unknown> = await import('../../src/domain/auth/Authorization.js');
 

@@ -8,7 +8,9 @@ export type Action =
   | 'clients.read'
   | 'clients.manage'
   | 'products.read'
-  | 'products.manage';
+  | 'products.manage'
+  | 'settings.read'
+  | 'settings.manage';
 
 /**
  * Perfil → acciones permitidas (FR-11). Lo que no figura acá está prohibido (deny-by-default).
@@ -23,10 +25,19 @@ const PERMISSIONS: Readonly<Record<UserRole, readonly Action[]>> = Object.freeze
     'clients.manage',
     'products.read',
     'products.manage',
+    'settings.read',
+    'settings.manage',
   ]),
   // Clientes y productos: Admin y Editor gestionan, los tres perfiles leen (FEAT-010, FR-19).
-  editor: Object.freeze<Action[]>(['clients.read', 'clients.manage', 'products.read', 'products.manage']),
-  consulta: Object.freeze<Action[]>(['clients.read', 'products.read']),
+  // Configuración de facturación: los tres perfiles la leen, solo Admin la cambia (FEAT-011, FR-12).
+  editor: Object.freeze<Action[]>([
+    'clients.read',
+    'clients.manage',
+    'products.read',
+    'products.manage',
+    'settings.read',
+  ]),
+  consulta: Object.freeze<Action[]>(['clients.read', 'products.read', 'settings.read']),
 });
 
 export function can(role: UserRole, action: Action): boolean {

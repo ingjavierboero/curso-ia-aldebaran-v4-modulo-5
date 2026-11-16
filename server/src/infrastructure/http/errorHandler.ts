@@ -16,7 +16,6 @@ import {
   DuplicateCuit,
   InvalidClientData,
   InvalidCuit,
-  InvalidIvaCondition,
   ProductAlreadyAssigned,
 } from '../../domain/client/errors.js';
 import {
@@ -25,7 +24,7 @@ import {
   InvalidPrice,
   InvalidProductData,
 } from '../../domain/product/errors.js';
-import { InvalidEmail } from '../../domain/shared/errors.js';
+import { InvalidEmail, InvalidIvaCondition } from '../../domain/shared/errors.js';
 import {
   EmailAlreadyInUse,
   InvalidName,

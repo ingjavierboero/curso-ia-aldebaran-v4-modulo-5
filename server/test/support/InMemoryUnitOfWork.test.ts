@@ -3,7 +3,7 @@ import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js'
 import { Session } from '../../src/domain/auth/Session.js';
 import { Client } from '../../src/domain/client/Client.js';
 import { Cuit } from '../../src/domain/client/Cuit.js';
-import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 import { Price } from '../../src/domain/product/Price.js';
 import { Product } from '../../src/domain/product/Product.js';
 import { Email } from '../../src/domain/shared/Email.js';

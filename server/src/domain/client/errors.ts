@@ -7,15 +7,6 @@ export class InvalidCuit extends Error {
   }
 }
 
-/** Condición frente al IVA fuera de los códigos admitidos para una Factura C (FR-04). */
-export class InvalidIvaCondition extends Error {
-  override readonly name = 'InvalidIvaCondition';
-
-  constructor(message = 'La condición frente al IVA no es válida') {
-    super(message);
-  }
-}
-
 /** Otro cliente ya tiene ese CUIT (FR-06, NFR-01). */
 export class DuplicateCuit extends Error {
   override readonly name = 'DuplicateCuit';
