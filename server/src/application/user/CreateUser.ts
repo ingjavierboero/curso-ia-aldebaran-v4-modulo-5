@@ -1,7 +1,7 @@
 import { assertCan } from '../../domain/auth/Authorization.js';
 import type { PasswordHasher } from '../../domain/auth/PasswordHasher.js';
 import type { Clock } from '../../domain/shared/Clock.js';
-import { Email } from '../../domain/user/Email.js';
+import { Email } from '../../domain/shared/Email.js';
 import { EmailAlreadyInUse } from '../../domain/user/errors.js';
 import { PasswordPolicy } from '../../domain/user/PasswordPolicy.js';
 import { parseUserName, parseUserRole, User } from '../../domain/user/User.js';

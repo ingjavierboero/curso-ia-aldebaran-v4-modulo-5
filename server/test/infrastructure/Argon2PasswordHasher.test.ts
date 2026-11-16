@@ -1,6 +1,6 @@
 import { verify as argon2Verify } from '@node-rs/argon2';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
 import { Argon2PasswordHasher } from '../../src/infrastructure/auth/Argon2PasswordHasher.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';

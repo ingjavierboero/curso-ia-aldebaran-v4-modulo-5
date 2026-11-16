@@ -4,8 +4,9 @@ import { IncorrectCurrentPassword, InvalidCredentials } from '../../../applicati
 import type { Login } from '../../../application/auth/Login.js';
 import type { Logout } from '../../../application/auth/Logout.js';
 import type { Clock } from '../../../domain/shared/Clock.js';
-import { Email } from '../../../domain/user/Email.js';
-import { InvalidEmail, PasswordUnchanged, WeakPassword } from '../../../domain/user/errors.js';
+import { Email } from '../../../domain/shared/Email.js';
+import { InvalidEmail } from '../../../domain/shared/errors.js';
+import { PasswordUnchanged, WeakPassword } from '../../../domain/user/errors.js';
 import { PasswordPolicy } from '../../../domain/user/PasswordPolicy.js';
 import { type AuthOutcome, type Logger, logAuthAttempt } from '../authLog.js';
 import { bodyObject, InvalidBody, requiredString } from '../body.js';

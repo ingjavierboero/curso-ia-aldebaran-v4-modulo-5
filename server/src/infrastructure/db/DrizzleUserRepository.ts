@@ -1,5 +1,5 @@
 import { and, asc, count, eq } from 'drizzle-orm';
-import { Email } from '../../domain/user/Email.js';
+import { Email } from '../../domain/shared/Email.js';
 import { EmailAlreadyInUse } from '../../domain/user/errors.js';
 import { User } from '../../domain/user/User.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';

@@ -4,7 +4,7 @@ import { InvalidResetToken } from '../../../application/auth/errors.js';
 import type { RequestPasswordReset } from '../../../application/auth/RequestPasswordReset.js';
 import type { ResetPasswordWithToken } from '../../../application/auth/ResetPasswordWithToken.js';
 import type { Clock } from '../../../domain/shared/Clock.js';
-import { Email } from '../../../domain/user/Email.js';
+import { Email } from '../../../domain/shared/Email.js';
 import { WeakPassword } from '../../../domain/user/errors.js';
 import { type AuthOutcome, type Logger, logAuthAttempt } from '../authLog.js';
 import { bodyObject, InvalidBody, requiredString } from '../body.js';

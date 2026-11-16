@@ -17,7 +17,7 @@ import { DeactivateUser } from '../../src/application/user/DeactivateUser.js';
 import { ListUsers } from '../../src/application/user/ListUsers.js';
 import { ReactivateUser } from '../../src/application/user/ReactivateUser.js';
 import { UpdateUser } from '../../src/application/user/UpdateUser.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
 import { Argon2PasswordHasher } from '../../src/infrastructure/auth/Argon2PasswordHasher.js';
 import { CryptoSessionTokenGenerator } from '../../src/infrastructure/auth/CryptoSessionTokenGenerator.js';

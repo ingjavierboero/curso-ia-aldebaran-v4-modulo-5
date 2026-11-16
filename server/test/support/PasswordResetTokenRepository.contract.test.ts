@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { PasswordResetToken, RESET_EMAIL_COOLDOWN_MS, RESET_TOKEN_TTL_MS } from '../../src/domain/auth/PasswordResetToken.js';
 import type { PasswordResetTokenRepository } from '../../src/domain/auth/PasswordResetTokenRepository.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';

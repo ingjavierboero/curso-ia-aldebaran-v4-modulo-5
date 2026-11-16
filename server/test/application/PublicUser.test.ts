@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toPublicUser } from '../../src/application/auth/dto/PublicUser.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
 
 describe('PublicUser', () => {

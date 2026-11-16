@@ -2,7 +2,13 @@ import type { UserRole } from '../user/User.js';
 import { Forbidden } from './errors.js';
 
 /** Acciones sujetas a permiso. Crece con cada módulo (clientes, facturación, pagos…). */
-export type Action = 'users.read' | 'users.manage';
+export type Action =
+  | 'users.read'
+  | 'users.manage'
+  | 'clients.read'
+  | 'clients.manage'
+  | 'products.read'
+  | 'products.manage';
 
 /**
  * Perfil → acciones permitidas (FR-11). Lo que no figura acá está prohibido (deny-by-default).
@@ -10,9 +16,17 @@ export type Action = 'users.read' | 'users.manage';
  * ejecución. Se consulta solo con `can`/`assertCan`.
  */
 const PERMISSIONS: Readonly<Record<UserRole, readonly Action[]>> = Object.freeze({
-  admin: Object.freeze<Action[]>(['users.read', 'users.manage']),
-  editor: Object.freeze<Action[]>([]),
-  consulta: Object.freeze<Action[]>([]),
+  admin: Object.freeze<Action[]>([
+    'users.read',
+    'users.manage',
+    'clients.read',
+    'clients.manage',
+    'products.read',
+    'products.manage',
+  ]),
+  // Clientes y productos: Admin y Editor gestionan, los tres perfiles leen (FEAT-010, FR-19).
+  editor: Object.freeze<Action[]>(['clients.read', 'clients.manage', 'products.read', 'products.manage']),
+  consulta: Object.freeze<Action[]>(['clients.read', 'products.read']),
 });
 
 export function can(role: UserRole, action: Action): boolean {

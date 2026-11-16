@@ -4,7 +4,7 @@ import type { DeactivateUser } from '../../../application/user/DeactivateUser.js
 import type { ListUsers } from '../../../application/user/ListUsers.js';
 import type { ReactivateUser } from '../../../application/user/ReactivateUser.js';
 import type { UpdateUser } from '../../../application/user/UpdateUser.js';
-import { Email } from '../../../domain/user/Email.js';
+import { Email } from '../../../domain/shared/Email.js';
 import { PasswordPolicy } from '../../../domain/user/PasswordPolicy.js';
 import { USER_NAME_MAX_LENGTH } from '../../../domain/user/User.js';
 import { bodyObject, InvalidBody, optionalString, requiredString } from '../body.js';

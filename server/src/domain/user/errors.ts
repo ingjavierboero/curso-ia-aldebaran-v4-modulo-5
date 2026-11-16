@@ -1,11 +1,3 @@
-export class InvalidEmail extends Error {
-  override readonly name = 'InvalidEmail';
-
-  constructor(message = 'El email no tiene un formato válido') {
-    super(message);
-  }
-}
-
 export class WeakPassword extends Error {
   override readonly name = 'WeakPassword';
 

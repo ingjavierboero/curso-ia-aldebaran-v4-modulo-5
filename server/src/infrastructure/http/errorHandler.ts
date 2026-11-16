@@ -9,9 +9,9 @@ import {
 } from '../../application/auth/errors.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { Forbidden } from '../../domain/auth/errors.js';
+import { InvalidEmail } from '../../domain/shared/errors.js';
 import {
   EmailAlreadyInUse,
-  InvalidEmail,
   InvalidName,
   InvalidRole,
   LastActiveAdmin,

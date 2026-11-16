@@ -4,7 +4,7 @@ import { InvalidResetToken } from '../../src/application/auth/errors.js';
 import { RequestPasswordReset } from '../../src/application/auth/RequestPasswordReset.js';
 import { ResetPasswordWithToken } from '../../src/application/auth/ResetPasswordWithToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
 import { CryptoSessionTokenGenerator } from '../../src/infrastructure/auth/CryptoSessionTokenGenerator.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';

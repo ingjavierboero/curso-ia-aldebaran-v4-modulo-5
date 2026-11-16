@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
 import { InMemoryPasswordResetTokenRepository } from './InMemoryPasswordResetTokenRepository.js';
 import { InMemorySessionRepository } from './InMemorySessionRepository.js';

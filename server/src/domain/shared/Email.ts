@@ -4,7 +4,10 @@ import { InvalidEmail } from './errors.js';
 // que separa etiquetas no vacías.
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
-/** Value object: email normalizado (trim + minúsculas), con formato válido y máximo 254 caracteres. */
+/**
+ * Value object: email normalizado (trim + minúsculas), con formato válido y máximo 254 caracteres.
+ * Compartido entre agregados: el email de un usuario y el email de facturación de un cliente.
+ */
 export class Email {
   static readonly MAX_LENGTH = 254;
 
