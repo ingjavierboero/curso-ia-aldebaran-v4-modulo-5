@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { InvalidName, InvalidRole } from '../../src/domain/user/errors.js';
 import { parseUserName, parseUserRole, User, USER_ROLES, USER_STATUSES } from '../../src/domain/user/User.js';
 

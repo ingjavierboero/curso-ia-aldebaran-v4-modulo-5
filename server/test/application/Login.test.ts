@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidCredentials } from '../../src/application/auth/errors.js';
-import { InvalidEmail } from '../../src/domain/user/errors.js';
+import { InvalidEmail } from '../../src/domain/shared/errors.js';
 import { createAuthContext, DUMMY_HASH } from '../support/authContext.js';
 
 describe('Login', () => {

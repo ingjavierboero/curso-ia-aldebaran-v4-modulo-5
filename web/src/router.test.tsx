@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useAuthStore } from './store/authStore';
+import { LOS_ANDES } from './test/catalogFixtures';
 import { ANA, CARLOS, EVA, HEALTH_OK, SESSION_401, mockFetch } from './test/fetchMock';
 import { renderApp } from './test/renderApp';
 
@@ -84,6 +85,45 @@ describe('router', () => {
     const withSession = renderApp('/perfil');
     expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument();
     expect(withSession.router.state.location.pathname).toBe('/perfil');
+  });
+
+  // /clientes, /clientes/:id y /productos exigen sesión; los tres perfiles entran (FEAT-010, AC-16).
+  it('test_web_rutas_catalogo_requieren_sesion', async () => {
+    const CATALOG_PATHS = ['/clientes', '/clientes/c-1', '/productos'];
+    for (const path of CATALOG_PATHS) {
+      const fetchMock = mockFetch({
+        'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+        'GET /api/auth/session': SESSION_401,
+      });
+      const { router, view } = renderApp(path);
+
+      await waitFor(() => { expect(router.state.location.pathname, path).toBe('/login'); });
+      expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+      expect(useAuthStore.getState().status).toBe('anon');
+      expect(fetchMock.calls.filter((c) => c.path.startsWith('/api/clients') || c.path.startsWith('/api/products'))).toHaveLength(0);
+      view.unmount();
+    }
+
+    const client = { ...LOS_ANDES, products: [] };
+    for (const visitor of [ANA, EVA, { ...CARLOS, status: 'activo' as const }]) {
+      for (const [path, heading] of [
+        ['/clientes', 'Clientes'],
+        ['/clientes/c-1', 'Los Andes SA'],
+        ['/productos', 'Productos'],
+      ] as const) {
+        mockFetch({
+          'GET /api/auth/session': { status: 200, body: { user: visitor } },
+          'GET /api/health': HEALTH_OK,
+          'GET /api/clients': { status: 200, body: { clients: [LOS_ANDES] } },
+          'GET /api/clients/c-1': { status: 200, body: { client } },
+          'GET /api/products': { status: 200, body: { products: [] } },
+        });
+        const { router, view } = renderApp(path);
+        expect(await screen.findByText(heading, { selector: 'h3' })).toBeInTheDocument();
+        expect(router.state.location.pathname, `${visitor.role} ${path}`).toBe(path);
+        view.unmount();
+      }
+    }
   });
 
   // /recuperar y /recuperar/:token son públicas: no piden sesión ni el estado del setup (FEAT-008).

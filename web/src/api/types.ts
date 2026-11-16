@@ -28,6 +28,70 @@ export interface UpdateUserInput {
   role?: UserRole;
 }
 
+/** Estado de un cliente o de un producto (FEAT-010). */
+export type CatalogStatus = 'activo' | 'inactivo';
+
+/** Moneda del precio de un producto. */
+export type Currency = 'ARS' | 'USD';
+
+/** Condición frente al IVA, como la devuelve el server: código de ARCA y nombre. */
+export interface IvaCondition {
+  code: number;
+  name: string;
+}
+
+/** Lo que el server devuelve de un cliente (`toPublicClient`). */
+export interface Client {
+  id: string;
+  businessName: string;
+  cuit: string;
+  address: string;
+  billingEmail: string;
+  ivaCondition: IvaCondition;
+  status: CatalogStatus;
+  createdAt: string;
+}
+
+/**
+ * Lo que el server devuelve de un producto (`toPublicProduct`). El precio es texto con punto y 2
+ * decimales (`"15000.50"`): nunca pasa por un número (NFR-03).
+ */
+export interface Product {
+  id: string;
+  name: string;
+  price: string;
+  currency: Currency;
+  status: CatalogStatus;
+  createdAt: string;
+}
+
+/** Detalle de un cliente (`GET /api/clients/:id`): sus datos y los productos asignados. */
+export interface ClientDetail extends Client {
+  products: Product[];
+}
+
+/** Body de `POST /api/clients`: el cliente queda Activo. */
+export interface CreateClientInput {
+  businessName: string;
+  cuit: string;
+  address: string;
+  billingEmail: string;
+  ivaCondition: number;
+}
+
+/** Body de `PATCH /api/clients/:id`: al menos uno de los campos. */
+export type UpdateClientInput = Partial<CreateClientInput>;
+
+/** Body de `POST /api/products`: precio como texto con punto decimal. */
+export interface CreateProductInput {
+  name: string;
+  price: string;
+  currency: Currency;
+}
+
+/** Body de `PATCH /api/products/:id`: al menos uno de los campos. */
+export type UpdateProductInput = Partial<CreateProductInput>;
+
 /** Estado de un proceso automático, tal como lo informa `GET /api/health` a un usuario con sesión. */
 export interface HealthJob {
   name: string;

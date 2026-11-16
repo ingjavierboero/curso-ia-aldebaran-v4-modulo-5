@@ -22,6 +22,28 @@ describe('Authorization', () => {
     }
   });
 
+  // Admin y Editor gestionan clientes y productos; Consulta solo los lee (FR-19, AC-16)
+  it('test_authorization_permisos_de_clientes_y_productos', () => {
+    const all = ['clients.read', 'clients.manage', 'products.read', 'products.manage'] as const;
+    for (const role of ['admin', 'editor'] as const) {
+      for (const action of all) {
+        expect(can(role, action), `${role} ${action}`).toBe(true);
+        expect(() => { assertCan(role, action); }).not.toThrow();
+      }
+    }
+
+    expect(can('consulta', 'clients.read')).toBe(true);
+    expect(can('consulta', 'products.read')).toBe(true);
+    expect(can('consulta', 'clients.manage')).toBe(false);
+    expect(can('consulta', 'products.manage')).toBe(false);
+    expect(() => { assertCan('consulta', 'clients.manage'); }).toThrow(Forbidden);
+    expect(() => { assertCan('consulta', 'products.manage'); }).toThrow(Forbidden);
+
+    // los permisos de usuarios no cambian: Editor y Consulta siguen sin users.*
+    expect(can('editor', 'users.manage')).toBe(false);
+    expect(can('consulta', 'users.read')).toBe(false);
+  });
+
   it('la tabla de permisos no se expone fuera del módulo', async () => {
     const mod: Record<string, unknown> = await import('../../src/domain/auth/Authorization.js');
 

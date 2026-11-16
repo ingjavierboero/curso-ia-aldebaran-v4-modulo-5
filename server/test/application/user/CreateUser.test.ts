@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Forbidden } from '../../../src/domain/auth/errors.js';
-import {
-  EmailAlreadyInUse,
-  InvalidEmail,
-  InvalidName,
-  InvalidRole,
-  WeakPassword,
-} from '../../../src/domain/user/errors.js';
+import { InvalidEmail } from '../../../src/domain/shared/errors.js';
+import { EmailAlreadyInUse, InvalidName, InvalidRole, WeakPassword } from '../../../src/domain/user/errors.js';
 import { createAuthContext } from '../../support/authContext.js';
 
 const VALID = { name: 'Bruno Editor', email: 'bruno@empresa.com', role: 'editor', password: '12345678' };

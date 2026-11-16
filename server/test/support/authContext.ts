@@ -10,7 +10,7 @@ import { DeactivateUser } from '../../src/application/user/DeactivateUser.js';
 import { ListUsers } from '../../src/application/user/ListUsers.js';
 import { ReactivateUser } from '../../src/application/user/ReactivateUser.js';
 import { UpdateUser } from '../../src/application/user/UpdateUser.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
 import { FakeClock } from './FakeClock.js';
 import { FakePasswordHasher } from './FakePasswordHasher.js';
@@ -37,7 +37,7 @@ export function createAuthContext() {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const resetTokens = new InMemoryPasswordResetTokenRepository();
-  const uow = new InMemoryUnitOfWork(users, sessions, resetTokens);
+  const uow = new InMemoryUnitOfWork({ users, sessions, resetTokens });
   const clock = new FakeClock();
   const hasher = new FakePasswordHasher();
   const tokens = new FakeSessionTokenGenerator();

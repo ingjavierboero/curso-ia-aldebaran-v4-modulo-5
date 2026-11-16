@@ -160,6 +160,123 @@ describe('base de datos', () => {
     expect(sqlite.prepare('SELECT COUNT(*) AS n FROM password_reset_tokens').get()).toEqual({ n: 0 });
   });
 
+  // FEAT-010: clients, products y client_products con sus UNIQUE, CHECK, FK y PK compuesta
+  it('test_migracion_clientes_productos', () => {
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+
+    migrate(db);
+
+    const sqlite = db.$client;
+    type Column = { name: string; type: string; notnull: number; pk: number };
+    const columnsOf = (table: string) =>
+      (sqlite.prepare(`PRAGMA table_info('${table}')`).all() as Column[]).map((c) => [
+        c.name,
+        c.type.toLowerCase(),
+        c.notnull,
+        c.pk,
+      ]);
+    const indexesOf = (table: string) =>
+      sqlite.prepare(`PRAGMA index_list('${table}')`).all() as { name: string; unique: number; origin: string }[];
+    const colsOf = (index: string) =>
+      (sqlite.prepare(`PRAGMA index_info('${index}')`).all() as { name: string }[]).map((c) => c.name);
+    const uniqueSingleCols = (table: string) =>
+      indexesOf(table)
+        .filter((i) => i.unique === 1 && i.origin !== 'pk')
+        .map((i) => colsOf(i.name))
+        .filter((cols) => cols.length === 1)
+        .map((cols) => cols[0]);
+
+    expect(columnsOf('clients')).toEqual([
+      ['id', 'text', 1, 1],
+      ['business_name', 'text', 1, 0],
+      ['cuit', 'text', 1, 0],
+      ['address', 'text', 1, 0],
+      ['billing_email', 'text', 1, 0],
+      ['iva_condition', 'integer', 1, 0],
+      ['status', 'text', 1, 0],
+      ['created_at', 'text', 1, 0],
+    ]);
+    const clientUnique = uniqueSingleCols('clients');
+    expect(clientUnique).toHaveLength(2);
+    expect(clientUnique).toEqual(expect.arrayContaining(['cuit', 'billing_email']));
+
+    expect(columnsOf('products')).toEqual([
+      ['id', 'text', 1, 1],
+      ['name', 'text', 1, 0],
+      ['name_normalized', 'text', 1, 0],
+      ['price_cents', 'integer', 1, 0],
+      ['currency', 'text', 1, 0],
+      ['status', 'text', 1, 0],
+      ['created_at', 'text', 1, 0],
+    ]);
+    expect(uniqueSingleCols('products')).toEqual(['name_normalized']);
+
+    // PK compuesta (client_id, product_id) e índice no único en product_id
+    expect(columnsOf('client_products')).toEqual([
+      ['client_id', 'text', 1, 1],
+      ['product_id', 'text', 1, 2],
+      ['created_at', 'text', 1, 0],
+    ]);
+    const cpIndexes = indexesOf('client_products');
+    const pk = cpIndexes.find((i) => i.origin === 'pk');
+    expect(pk && colsOf(pk.name)).toEqual(['client_id', 'product_id']);
+    const byProduct = cpIndexes.filter((i) => i.origin === 'c' && i.unique === 0).map((i) => colsOf(i.name));
+    expect(byProduct).toEqual([['product_id']]);
+
+    const fks = sqlite.prepare("PRAGMA foreign_key_list('client_products')").all() as {
+      table: string; from: string; to: string; on_delete: string;
+    }[];
+    expect(fks).toHaveLength(2);
+    expect(fks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ table: 'clients', from: 'client_id', to: 'id', on_delete: 'NO ACTION' }),
+        expect.objectContaining({ table: 'products', from: 'product_id', to: 'id', on_delete: 'NO ACTION' }),
+      ]),
+    );
+
+    // CHECK y UNIQUE de clients
+    const insertClient = sqlite.prepare(
+      "INSERT INTO clients (id, business_name, cuit, address, billing_email, iva_condition, status, created_at) VALUES (?, 'R', ?, 'D', ?, ?, ?, '2026-11-16T00:00:00.000Z')",
+    );
+    insertClient.run('c1', '30711111111', 'a@b.co', 1, 'activo');
+    for (const code of [4, 5, 6, 7, 8, 9, 10, 13, 15, 16]) {
+      insertClient.run(`c-iva-${String(code)}`, `cuit-${String(code)}`, `${String(code)}@b.co`, code, 'inactivo');
+    }
+    expect(() => insertClient.run('c2', '20123456786', 'x@b.co', 2, 'activo')).toThrow(/CHECK/);
+    expect(() => insertClient.run('c3', '20123456786', 'x@b.co', 99, 'activo')).toThrow(/CHECK/);
+    expect(() => insertClient.run('c4', '20123456786', 'x@b.co', 1, 'baja')).toThrow(/CHECK/);
+    expect(() => insertClient.run('c5', '30711111111', 'x@b.co', 1, 'activo')).toThrow(/UNIQUE/);
+    expect(() => insertClient.run('c6', '20123456786', 'a@b.co', 1, 'activo')).toThrow(/UNIQUE/);
+    expect(() => insertClient.run('c7', null, 'y@b.co', 1, 'activo')).toThrow(/NOT NULL/);
+
+    // CHECK y UNIQUE de products
+    const insertProduct = sqlite.prepare(
+      "INSERT INTO products (id, name, name_normalized, price_cents, currency, status, created_at) VALUES (?, 'N', ?, ?, ?, ?, '2026-11-16T00:00:00.000Z')",
+    );
+    insertProduct.run('p1', 'n1', 1, 'ARS', 'activo');
+    insertProduct.run('p2', 'n2', 99_999_999_999, 'USD', 'inactivo');
+    expect(() => insertProduct.run('p3', 'n3', 0, 'ARS', 'activo')).toThrow(/CHECK/);
+    expect(() => insertProduct.run('p4', 'n4', -100, 'ARS', 'activo')).toThrow(/CHECK/);
+    expect(() => insertProduct.run('p5', 'n5', 100, 'EUR', 'activo')).toThrow(/CHECK/);
+    expect(() => insertProduct.run('p6', 'n6', 100, 'ARS', 'baja')).toThrow(/CHECK/);
+    expect(() => insertProduct.run('p7', 'n1', 100, 'ARS', 'activo')).toThrow(/UNIQUE/);
+
+    // PK compuesta y FK de client_products
+    const assign = sqlite.prepare(
+      "INSERT INTO client_products (client_id, product_id, created_at) VALUES (?, ?, '2026-11-16T00:00:00.000Z')",
+    );
+    assign.run('c1', 'p1');
+    assign.run('c1', 'p2');
+    expect(() => assign.run('c1', 'p1')).toThrow(/UNIQUE constraint failed: client_products\.client_id, client_products\.product_id/);
+    expect(() => assign.run('c1', 'no-existe')).toThrow(/FOREIGN KEY/);
+    expect(() => assign.run('no-existe', 'p1')).toThrow(/FOREIGN KEY/);
+    // sin ON DELETE: no se puede borrar un cliente o producto con asignaciones
+    expect(() => sqlite.prepare("DELETE FROM clients WHERE id = 'c1'").run()).toThrow(/FOREIGN KEY/);
+    expect(() => sqlite.prepare("DELETE FROM products WHERE id = 'p1'").run()).toThrow(/FOREIGN KEY/);
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM client_products').get()).toEqual({ n: 2 });
+  });
+
   // createDb crea el directorio faltante con permisos 0700 y el archivo con 0600
   it('test_createdb_crea_directorio_0700_y_archivo_0600', () => {
     const dir = join(workDir, 'nested', 'data');

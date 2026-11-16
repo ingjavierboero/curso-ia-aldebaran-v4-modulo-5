@@ -71,7 +71,7 @@ function isIgnoredBy(pattern: string, relativePath: string): boolean {
 
 const sourceSamples = [
   'server/src/main.ts',
-  'server/src/domain/user/Email.ts',
+  'server/src/domain/shared/Email.ts',
   'server/src/infrastructure/http/app.ts',
   'server/test/domain/Email.test.ts',
   'server/vitest.config.ts',

@@ -53,6 +53,30 @@ describe('HomePage', () => {
     expect((await screen.findByText('eva@aldebaran.test')).closest('tr')).toHaveTextContent('Eva Editora');
   });
 
+  // Clientes y productos se ofrecen a los tres perfiles (FEAT-010).
+  it('los accesos a clientes y productos se muestran a los tres perfiles', async () => {
+    for (const visitor of [ANA, EVA, { ...CARLOS, status: 'activo' as const }]) {
+      mockFetch({
+        'GET /api/auth/session': { status: 200, body: { user: visitor } },
+        'GET /api/health': HEALTH_OK,
+        'GET /api/clients': { status: 200, body: { clients: [] } },
+        'GET /api/products': { status: 200, body: { products: [] } },
+      });
+      const { router, user, view } = renderApp('/');
+      expect(await screen.findByRole('heading', { name: `Hola, ${visitor.name}` })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Productos' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Clientes' }));
+      await waitFor(() => { expect(router.state.location.pathname).toBe('/clientes'); });
+      expect(await screen.findByText('Clientes', { selector: 'h3' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Productos' }));
+      await waitFor(() => { expect(router.state.location.pathname).toBe('/productos'); });
+      expect(await screen.findByText('Productos', { selector: 'h3' })).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it('la revalidación por focus actualiza el perfil y saca el acceso a usuarios a quien dejó de ser Admin', async () => {
     mockFetch({
       'GET /api/auth/session': [{ status: 200, body: { user: ANA } }, { status: 200, body: { user: { ...ANA, role: 'consulta' } } }],

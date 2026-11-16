@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FirstAdminAlreadyExists } from '../../src/application/auth/errors.js';
 import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
-import { Email } from '../../src/domain/user/Email.js';
-import { InvalidEmail, InvalidName, WeakPassword } from '../../src/domain/user/errors.js';
+import { Email } from '../../src/domain/shared/Email.js';
+import { InvalidEmail } from '../../src/domain/shared/errors.js';
+import { InvalidName, WeakPassword } from '../../src/domain/user/errors.js';
 import { User } from '../../src/domain/user/User.js';
 import { createAuthContext } from '../support/authContext.js';
 import { FakeClock } from '../support/FakeClock.js';
@@ -114,7 +115,7 @@ describe('RegisterFirstAdmin', () => {
       }),
     );
     const registerFirstAdmin = new RegisterFirstAdmin({
-      uow: new InMemoryUnitOfWork(users, new InMemorySessionRepository()),
+      uow: new InMemoryUnitOfWork({ users, sessions: new InMemorySessionRepository() }),
       hasher: new FakePasswordHasher(),
       ids: new SequentialIdGenerator(),
       clock: new FakeClock(),

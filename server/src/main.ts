@@ -11,8 +11,21 @@ import { PeekSession } from './application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from './application/auth/RegisterFirstAdmin.js';
 import { RequestPasswordReset } from './application/auth/RequestPasswordReset.js';
 import { ResetPasswordWithToken } from './application/auth/ResetPasswordWithToken.js';
+import { AssignProducts } from './application/client/AssignProducts.js';
+import { CreateClient } from './application/client/CreateClient.js';
+import { DeactivateClient } from './application/client/DeactivateClient.js';
+import { GetClient } from './application/client/GetClient.js';
+import { ListClients } from './application/client/ListClients.js';
+import { ReactivateClient } from './application/client/ReactivateClient.js';
+import { UnassignProduct } from './application/client/UnassignProduct.js';
+import { UpdateClient } from './application/client/UpdateClient.js';
 import { GetHealth } from './application/health/GetHealth.js';
 import { JobRegistry } from './application/health/JobRegistry.js';
+import { CreateProduct } from './application/product/CreateProduct.js';
+import { DeactivateProduct } from './application/product/DeactivateProduct.js';
+import { ListProducts } from './application/product/ListProducts.js';
+import { ReactivateProduct } from './application/product/ReactivateProduct.js';
+import { UpdateProduct } from './application/product/UpdateProduct.js';
 import { CreateUser } from './application/user/CreateUser.js';
 import { DeactivateUser } from './application/user/DeactivateUser.js';
 import { ListUsers } from './application/user/ListUsers.js';
@@ -23,6 +36,9 @@ import { CryptoSessionTokenGenerator } from './infrastructure/auth/CryptoSession
 import { UuidGenerator } from './infrastructure/auth/UuidGenerator.js';
 import { SystemClock } from './infrastructure/clock/SystemClock.js';
 import { createDb, resolveDatabasePath } from './infrastructure/db/client.js';
+import { DrizzleClientProductRepository } from './infrastructure/db/DrizzleClientProductRepository.js';
+import { DrizzleClientRepository } from './infrastructure/db/DrizzleClientRepository.js';
+import { DrizzleProductRepository } from './infrastructure/db/DrizzleProductRepository.js';
 import { DrizzleJobRunRepository } from './infrastructure/db/DrizzleJobRunRepository.js';
 import { DrizzlePasswordResetTokenRepository } from './infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from './infrastructure/db/DrizzleSessionRepository.js';
@@ -99,6 +115,11 @@ async function main(): Promise<void> {
     clock,
   });
 
+  // FEAT-010: lecturas de clientes y productos fuera de la Unit of Work; las escrituras van por `uow`.
+  const clients = new DrizzleClientRepository(db);
+  const products = new DrizzleProductRepository(db);
+  const clientProducts = new DrizzleClientProductRepository(db);
+
   const app = createApp({
     requestPasswordReset,
     checkPasswordResetToken,
@@ -123,6 +144,19 @@ async function main(): Promise<void> {
     updateUser: new UpdateUser({ uow }),
     deactivateUser: new DeactivateUser({ uow }),
     reactivateUser: new ReactivateUser({ uow }),
+    listClients: new ListClients({ clients }),
+    getClient: new GetClient({ clients, products, clientProducts }),
+    createClient: new CreateClient({ uow, ids, clock }),
+    updateClient: new UpdateClient({ uow }),
+    deactivateClient: new DeactivateClient({ uow }),
+    reactivateClient: new ReactivateClient({ uow }),
+    assignProducts: new AssignProducts({ uow, clock }),
+    unassignProduct: new UnassignProduct({ uow }),
+    listProducts: new ListProducts({ products }),
+    createProduct: new CreateProduct({ uow, ids, clock }),
+    updateProduct: new UpdateProduct({ uow }),
+    deactivateProduct: new DeactivateProduct({ uow }),
+    reactivateProduct: new ReactivateProduct({ uow }),
     clock,
     logger,
   });

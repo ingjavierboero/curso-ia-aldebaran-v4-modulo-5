@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Forbidden } from '../../../src/domain/auth/errors.js';
-import { Email } from '../../../src/domain/user/Email.js';
+import { Email } from '../../../src/domain/shared/Email.js';
 import {
   EmailAlreadyInUse,
   InvalidName,

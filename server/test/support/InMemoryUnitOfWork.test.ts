@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Client } from '../../src/domain/client/Client.js';
+import { Cuit } from '../../src/domain/client/Cuit.js';
+import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { Price } from '../../src/domain/product/Price.js';
+import { Product } from '../../src/domain/product/Product.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { User } from '../../src/domain/user/User.js';
+import { InMemoryClientProductRepository } from './InMemoryClientProductRepository.js';
+import { InMemoryClientRepository } from './InMemoryClientRepository.js';
 import { InMemoryPasswordResetTokenRepository } from './InMemoryPasswordResetTokenRepository.js';
+import { InMemoryProductRepository } from './InMemoryProductRepository.js';
 import { InMemorySessionRepository } from './InMemorySessionRepository.js';
 import { InMemoryUnitOfWork } from './InMemoryUnitOfWork.js';
 import { InMemoryUserRepository } from './InMemoryUserRepository.js';
@@ -29,7 +37,7 @@ function makeSession(id: string, userId: string): Session {
 function setup() {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
-  const uow = new InMemoryUnitOfWork(users, sessions);
+  const uow = new InMemoryUnitOfWork({ users, sessions });
   return { users, sessions, uow };
 }
 
@@ -100,7 +108,7 @@ describe('InMemoryUnitOfWork', () => {
     const users = new InMemoryUserRepository();
     const sessions = new InMemorySessionRepository();
     const resetTokens = new InMemoryPasswordResetTokenRepository();
-    const uow = new InMemoryUnitOfWork(users, sessions, resetTokens);
+    const uow = new InMemoryUnitOfWork({ users, sessions, resetTokens });
     const t0 = new Date('2026-11-16T12:00:00.000Z');
     resetTokens.insert(PasswordResetToken.issue({ id: 't-1', userId: 'u-1', tokenHash: 'a'.repeat(64), now: t0 }));
     const boom = new Error('boom');
@@ -120,12 +128,64 @@ describe('InMemoryUnitOfWork', () => {
     expect(resetTokens.latestCreatedAtForUser('u-1')?.toISOString()).toBe(t0.toISOString());
   });
 
-  it('sin tercer parámetro usa un repositorio de tokens propio', () => {
+  it('sin los repositorios opcionales usa repositorios propios vacíos', () => {
     const { uow } = setup();
 
-    const latest = uow.run(({ resetTokens }) => resetTokens.latestCreatedAtForUser('u-1'));
+    const seen = uow.run(({ resetTokens, clients, products, clientProducts }) => ({
+      latest: resetTokens.latestCreatedAtForUser('u-1'),
+      clients: clients.list(),
+      products: products.list(),
+      assigned: clientProducts.listProductIdsOf('c-1'),
+    }));
 
-    expect(latest).toBeNull();
+    expect(seen).toEqual({ latest: null, clients: [], products: [], assigned: [] });
+  });
+
+  // FEAT-010: un error dentro de run deja clientes, productos y asignaciones como estaban
+  it('test_uow_error_revierte_clientes_productos', () => {
+    const users = new InMemoryUserRepository();
+    const sessions = new InMemorySessionRepository();
+    const clients = new InMemoryClientRepository();
+    const products = new InMemoryProductRepository();
+    const clientProducts = new InMemoryClientProductRepository();
+    const uow = new InMemoryUnitOfWork({ users, sessions, clients, products, clientProducts });
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    const makeClient = (id: string, cuit: string, email: string) =>
+      Client.create({
+        id,
+        businessName: `Cliente ${id}`,
+        cuit: Cuit.parse(cuit),
+        address: 'Calle 1',
+        billingEmail: Email.create(email),
+        ivaCondition: IvaCondition.of(1),
+        createdAt: t0,
+      });
+    const makeProduct = (id: string, name: string) =>
+      Product.create({ id, name, price: Price.parse('100', 'ARS'), createdAt: t0 });
+    clients.insert(makeClient('c-1', '30711111111', 'c1@empresa.com'));
+    products.insert(makeProduct('p-1', 'Turnos'));
+    clientProducts.assign('c-1', 'p-1', t0);
+    const boom = new Error('boom');
+
+    expect(() =>
+      uow.run(({ clients: txClients, products: txProducts, clientProducts: txAssignments }) => {
+        expect(txClients).toBe(clients);
+        expect(txProducts).toBe(products);
+        expect(txAssignments).toBe(clientProducts);
+        txClients.update((txClients.findById('c-1') as Client).deactivated());
+        txClients.insert(makeClient('c-2', '20123456786', 'c2@empresa.com'));
+        txProducts.update((txProducts.findById('p-1') as Product).deactivated());
+        txProducts.insert(makeProduct('p-2', 'Agenda'));
+        expect(txAssignments.unassign('c-1', 'p-1')).toBe(true);
+        txAssignments.assign('c-2', 'p-2', t0);
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    expect(clients.list().map((c) => [c.id, c.status])).toEqual([['c-1', 'activo']]);
+    expect(products.list().map((p) => [p.id, p.status])).toEqual([['p-1', 'activo']]);
+    expect(clientProducts.listProductIdsOf('c-1')).toEqual(['p-1']);
+    expect(clientProducts.listProductIdsOf('c-2')).toEqual([]);
   });
 
   it('rechaza una fn que devuelve una Promise y no deja sus cambios síncronos', () => {

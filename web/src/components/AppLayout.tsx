@@ -27,7 +27,8 @@ function readLayoutNotice(state: unknown): LayoutNotice | null {
 }
 
 /**
- * Marco de las pantallas con sesión: header (marca, nombre, "Mi perfil" para todos los perfiles,
+ * Marco de las pantallas con sesión: header (marca, nombre, "Clientes", "Productos" y "Mi perfil"
+ * para todos los perfiles,
  * acceso a usuarios solo para Admin y "Cerrar sesión") y el banner de salud. El botón "Usuarios"
  * es UX: la autorización real es la del server (FEAT-006, FR-13).
  */
@@ -96,6 +97,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Brand>
         <Space>
           <HeaderText $color={token.colorTextLightSolid}>{user?.name}</HeaderText>
+          <Button
+            onClick={() => {
+              void navigate('/clientes');
+            }}
+          >
+            Clientes
+          </Button>
+          <Button
+            onClick={() => {
+              void navigate('/productos');
+            }}
+          >
+            Productos
+          </Button>
           <Button
             onClick={() => {
               void navigate('/perfil');

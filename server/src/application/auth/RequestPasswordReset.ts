@@ -1,8 +1,8 @@
 import { canIssueResetToken, PasswordResetToken } from '../../domain/auth/PasswordResetToken.js';
 import type { PasswordResetTokenRepository } from '../../domain/auth/PasswordResetTokenRepository.js';
 import type { Clock } from '../../domain/shared/Clock.js';
-import { Email } from '../../domain/user/Email.js';
-import { InvalidEmail } from '../../domain/user/errors.js';
+import { Email } from '../../domain/shared/Email.js';
+import { InvalidEmail } from '../../domain/shared/errors.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';
 import type { EmailSender } from '../shared/EmailSender.js';
 import type { IdGenerator } from '../shared/IdGenerator.js';

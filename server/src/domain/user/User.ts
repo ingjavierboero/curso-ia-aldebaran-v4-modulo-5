@@ -1,4 +1,4 @@
-import type { Email } from './Email.js';
+import type { Email } from '../shared/Email.js';
 import { InvalidName, InvalidRole } from './errors.js';
 
 export const USER_ROLES = ['admin', 'editor', 'consulta'] as const;

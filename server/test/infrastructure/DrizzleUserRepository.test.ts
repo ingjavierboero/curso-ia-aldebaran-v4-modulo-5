@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { EmailAlreadyInUse } from '../../src/domain/user/errors.js';
 import { User, type UserRole } from '../../src/domain/user/User.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';

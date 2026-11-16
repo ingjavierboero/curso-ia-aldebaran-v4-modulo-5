@@ -1,4 +1,4 @@
-import type { Email } from '../../src/domain/user/Email.js';
+import type { Email } from '../../src/domain/shared/Email.js';
 import { EmailAlreadyInUse } from '../../src/domain/user/errors.js';
 import type { User } from '../../src/domain/user/User.js';
 import type { UserRepository } from '../../src/domain/user/UserRepository.js';

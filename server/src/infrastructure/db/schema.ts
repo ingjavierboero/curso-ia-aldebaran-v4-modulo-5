@@ -1,5 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { check, index, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { CLIENT_STATUSES } from '../../domain/client/Client.js';
+import { IVA_CONDITIONS } from '../../domain/client/IvaCondition.js';
+import { CURRENCIES } from '../../domain/product/Price.js';
+import { PRODUCT_STATUSES } from '../../domain/product/Product.js';
 import { USER_ROLES, USER_STATUSES } from '../../domain/user/User.js';
 
 export const users = sqliteTable(
@@ -78,4 +82,71 @@ export const jobRuns = sqliteTable(
   ],
 );
 
-export const schema = { users, sessions, jobRuns, passwordResetTokens };
+/** `'a', 'b'` para un CHECK … IN: los valores salen de constantes del dominio, nunca de la entrada. */
+const sqlList = (values: readonly (string | number)[]) =>
+  sql.raw(values.map((v) => (typeof v === 'number' ? String(v) : `'${v}'`)).join(', '));
+
+// Clientes (FEAT-010). CUIT y email de facturación únicos (NFR-01).
+export const clients = sqliteTable(
+  'clients',
+  {
+    id: text('id').primaryKey(),
+    businessName: text('business_name').notNull(),
+    // 11 dígitos, sin guiones
+    cuit: text('cuit').notNull().unique(),
+    address: text('address').notNull(),
+    // ya normalizado a minúsculas por el dominio
+    billingEmail: text('billing_email').notNull().unique(),
+    // código de ARCA de la condición frente al IVA
+    ivaCondition: integer('iva_condition').notNull(),
+    status: text('status', { enum: CLIENT_STATUSES }).notNull(),
+    // ISO 8601
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    check('clients_iva_condition_check', sql`${t.ivaCondition} IN (${sqlList(IVA_CONDITIONS.map((c) => c.code))})`),
+    check('clients_status_check', sql`${t.status} IN (${sqlList(CLIENT_STATUSES)})`),
+  ],
+);
+
+// Productos (FEAT-010). Nombre único sin distinguir mayúsculas (FR-11); precio en centavos (NFR-03).
+export const products = sqliteTable(
+  'products',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    // trim + NFC + minúsculas, derivado del nombre por el dominio
+    nameNormalized: text('name_normalized').notNull().unique(),
+    priceCents: integer('price_cents').notNull(),
+    currency: text('currency', { enum: CURRENCIES }).notNull(),
+    status: text('status', { enum: PRODUCT_STATUSES }).notNull(),
+    // ISO 8601
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    check('products_price_cents_check', sql`${t.priceCents} > 0`),
+    check('products_currency_check', sql`${t.currency} IN (${sqlList(CURRENCIES)})`),
+    check('products_status_check', sql`${t.status} IN (${sqlList(PRODUCT_STATUSES)})`),
+  ],
+);
+
+// Asignaciones cliente ↔ producto (FEAT-010). Sin ON DELETE: no se borran clientes ni productos.
+export const clientProducts = sqliteTable(
+  'client_products',
+  {
+    clientId: text('client_id')
+      .notNull()
+      .references(() => clients.id),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id),
+    // ISO 8601
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.clientId, t.productId] }),
+    index('client_products_product_id_idx').on(t.productId),
+  ],
+);
+
+export const schema = { users, sessions, jobRuns, passwordResetTokens, clients, products, clientProducts };

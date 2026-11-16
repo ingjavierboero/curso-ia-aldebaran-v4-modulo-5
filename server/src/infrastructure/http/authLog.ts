@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { Clock } from '../../domain/shared/Clock.js';
-import { Email } from '../../domain/user/Email.js';
-import { InvalidEmail } from '../../domain/user/errors.js';
+import { Email } from '../../domain/shared/Email.js';
+import { InvalidEmail } from '../../domain/shared/errors.js';
 
 export type LogRecord = Record<string, unknown>;
 

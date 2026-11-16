@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertKeepsAnActiveAdmin } from '../../src/domain/user/AdminPolicy.js';
-import { Email } from '../../src/domain/user/Email.js';
+import { Email } from '../../src/domain/shared/Email.js';
 import { LastActiveAdmin } from '../../src/domain/user/errors.js';
 import { User, type UserRole, type UserStatus } from '../../src/domain/user/User.js';
 

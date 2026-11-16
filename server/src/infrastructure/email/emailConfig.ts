@@ -1,6 +1,6 @@
 import type { Clock } from '../../domain/shared/Clock.js';
-import { Email } from '../../domain/user/Email.js';
-import { InvalidEmail } from '../../domain/user/errors.js';
+import { Email } from '../../domain/shared/Email.js';
+import { InvalidEmail } from '../../domain/shared/errors.js';
 // `Logger` vive en `http/authLog.ts`; moverlo a `logging/` queda como deuda (spec FEAT-004, Block 2).
 import type { Logger } from '../http/authLog.js';
 
