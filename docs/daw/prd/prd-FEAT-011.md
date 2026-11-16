@@ -5,7 +5,7 @@
 | Ticket | FEAT-011 |
 | Tracker | none |
 | Date | 2026-11-16 |
-| PRD loops | 0 |
+| PRD loops | 1 |
 | Loops since last human decision | 0 |
 
 ## Context and Problem
@@ -36,7 +36,7 @@ llega con los tickets siguientes.
 - FR-05: El sistema debe permitir a un Admin configurar los datos de la empresa emisora: razón social, domicilio comercial, condición frente al IVA, número de ingresos brutos, fecha de inicio de actividades y, opcionalmente, un nombre de fantasía (RF-91).
 - FR-06: El sistema debe admitir como condición frente al IVA de la empresa emisora solo Responsable Monotributo, Monotributista Social, Monotributo Trabajador Independiente Promovido o IVA Sujeto Exento (RF-91).
 - FR-07: El sistema debe rechazar una fecha de inicio de actividades que no existe en el calendario o que es posterior al día actual en hora de Argentina (RF-91, decisión D-02).
-- FR-08: El sistema debe aceptar como número de ingresos brutos un texto libre de 1 a 50 caracteres (decisión D-03).
+- FR-08: El sistema debe aceptar como número de ingresos brutos un texto libre de 1 a 50 caracteres, contados después de quitar los espacios del principio y del final, y guardarlo sin esos espacios (decisiones D-03 y D-07).
 - FR-09: El sistema debe permitir guardar los datos de la empresa emisora aunque falte alguno de los obligatorios, validando cada dato que sí se cargó (decisión D-01).
 - FR-10: El sistema debe indicar en la pantalla de configuración cuáles datos son obligatorios: razón social, domicilio comercial, condición frente al IVA, número de ingresos brutos, fecha de inicio de actividades y punto de venta (RF-221).
 - FR-11: Mientras falte alguno de los datos obligatorios, el sistema debe mostrar en la pantalla de configuración un aviso que nombre los datos que faltan y advierta que sin ellos no se pueden generar facturas (RF-221, RF-219).
@@ -60,7 +60,7 @@ llega con los tickets siguientes.
 - AC-06 (FR-05): WHEN un Admin configura la razón social, el domicilio comercial, la condición frente al IVA Responsable Monotributo, el número de ingresos brutos, la fecha de inicio de actividades 29/02/2024 y el nombre de fantasía de la empresa emisora, THE sistema SHALL guardarlos y mostrarlos al volver a abrir la configuración.
 - AC-07 (FR-06, FR-13): IF un Admin intenta configurar la condición frente al IVA de la empresa emisora en IVA Responsable Inscripto, THEN THE sistema SHALL rechazar el valor y mantener el anterior.
 - AC-08 (FR-07, FR-13): IF un Admin intenta configurar la fecha de inicio de actividades en 31/02/2020 o en el día siguiente al actual, THEN THE sistema SHALL rechazar el valor y mantener el anterior; y con la fecha del día actual SHALL guardarla.
-- AC-09 (FR-08): IF un Admin intenta configurar el número de ingresos brutos con un texto vacío o de 51 caracteres, THEN THE sistema SHALL rechazar el valor y mantener el anterior; y con "CM 901-123456-7" SHALL guardarlo.
+- AC-09 (FR-08): IF un Admin intenta configurar el número de ingresos brutos con un texto vacío, con "   " (solo espacios) o con 51 caracteres, THEN THE sistema SHALL rechazar el valor y mantener el anterior; y con "  CM 901-123456-7  " SHALL guardar "CM 901-123456-7".
 - AC-10 (FR-09, FR-11): WHEN un Admin guarda los datos de la empresa emisora sin el número de ingresos brutos, THE sistema SHALL guardar los demás datos y mostrar el aviso que indica que no se pueden generar facturas porque falta el número de ingresos brutos.
 - AC-11 (FR-11): WHEN un Admin completa el último dato obligatorio que faltaba y guarda, THE sistema SHALL dejar de mostrar el aviso.
 - AC-12 (FR-10, FR-11): WHILE falten el punto de venta y la fecha de inicio de actividades, THE pantalla de configuración SHALL marcar los seis datos obligatorios y mostrar un aviso que nombre el punto de venta y la fecha de inicio de actividades.
@@ -83,7 +83,7 @@ llega con los tickets siguientes.
 - Una factura generada con datos del emisor incompletos: el aviso de faltantes (FR-11) y, al facturar, RF-219 en FEAT-014.
 - Un Editor o Consulta que cambia la configuración: solo el Admin escribe, con autorización deny-by-default por perfil (FR-12).
 - Un guardado a medias que deja datos inconsistentes: todo o nada por guardado (FR-13, NFR-01).
-- Decisiones del usuario (2026-11-16): D-01 se pueden guardar los datos de la empresa emisora con obligatorios vacíos, y el aviso nombra los que faltan; D-02 la fecha de inicio de actividades no puede ser posterior al día actual (hora de Argentina); D-03 el número de ingresos brutos es texto libre de 1 a 50 caracteres; D-04 la pantalla muestra solo los valores de este ticket; D-05 la facturación se parte en cinco tickets y este es el primero (CLASSIFY).
+- Decisiones del usuario (2026-11-16): D-01 se pueden guardar los datos de la empresa emisora con obligatorios vacíos, y el aviso nombra los que faltan; D-02 la fecha de inicio de actividades no puede ser posterior al día actual (hora de Argentina); D-03 el número de ingresos brutos es texto libre de 1 a 50 caracteres; D-04 la pantalla muestra solo los valores de este ticket; D-05 la facturación se parte en cinco tickets y este es el primero (CLASSIFY); D-07 al número de ingresos brutos se le quitan los espacios del principio y del final antes de validar el largo, y un valor de solo espacios se rechaza (PLAN, vuelta a DEFINE).
 - Supuestos marcados (no los dijo el usuario): S-01 razón social, domicilio comercial y nombre de fantasía de 1 a 200 caracteres, sin espacios al inicio ni al final (como los clientes de FEAT-010); S-02 la fecha de inicio de actividades no puede ser anterior al 01/01/1900; S-03 un dato opcional o un obligatorio que no se envía conserva su valor anterior.
 
 ## Dependencies
