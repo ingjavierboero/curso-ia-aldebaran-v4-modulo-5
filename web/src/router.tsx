@@ -15,10 +15,13 @@ import {
   setUnauthorizedHandler,
 } from './api/authApi';
 import type { PublicUser } from './api/types';
+import { ClientDetailPage } from './pages/ClientDetailPage';
+import { ClientsPage } from './pages/ClientsPage';
 import { FirstAdminPage } from './pages/FirstAdminPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { ProductsPage } from './pages/ProductsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import type { ResetTokenCheck } from './routes/resetTokenCheck';
@@ -30,7 +33,7 @@ import { useAuthStore } from './store/authStore';
  * Los loaders llaman a la API con `navigateOnUnauthorized: false` porque redirigen ellos.
  */
 
-/** `/` y `/perfil`: exigen sesión. Sin sesión (401) o sin servidor, a `/login` (falla cerrado). */
+/** `/`, `/perfil`, `/clientes`, `/clientes/:id` y `/productos`: exigen sesión, cualquier perfil. Sin sesión (401) o sin servidor, a `/login` (falla cerrado). */
 async function sessionLoader() {
   try {
     const user = await getSession({ navigateOnUnauthorized: false });
@@ -106,6 +109,10 @@ export const routes: RouteObject[] = [
   { path: '/', loader: sessionLoader, Component: HomePage },
   { path: '/perfil', loader: sessionLoader, Component: ProfilePage },
   { path: '/usuarios', loader: usersLoader, Component: UsersPage },
+  // Clientes y productos (FEAT-010): con sesión, para los tres perfiles; escribir lo autoriza el server.
+  { path: '/clientes', loader: sessionLoader, Component: ClientsPage },
+  { path: '/clientes/:id', loader: sessionLoader, Component: ClientDetailPage },
+  { path: '/productos', loader: sessionLoader, Component: ProductsPage },
   { path: '/login', loader: loginLoader, Component: LoginPage },
   { path: '/setup', loader: setupLoader, Component: FirstAdminPage },
   { path: '/recuperar', Component: ForgotPasswordPage },
