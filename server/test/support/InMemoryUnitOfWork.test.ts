@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
 import { Email } from '../../src/domain/user/Email.js';
 import { User } from '../../src/domain/user/User.js';
+import { InMemoryPasswordResetTokenRepository } from './InMemoryPasswordResetTokenRepository.js';
 import { InMemorySessionRepository } from './InMemorySessionRepository.js';
 import { InMemoryUnitOfWork } from './InMemoryUnitOfWork.js';
 import { InMemoryUserRepository } from './InMemoryUserRepository.js';
@@ -91,6 +93,39 @@ describe('InMemoryUnitOfWork', () => {
 
     expect(users.findById('u-1')?.status).toBe('activo');
     expect(sessions.all().map((s) => s.id)).toEqual(['s-1', 's-2']);
+  });
+
+  // FEAT-008: un error dentro de run deja resetTokens sin cambios
+  it('test_uow_error_revierte_reset_tokens', () => {
+    const users = new InMemoryUserRepository();
+    const sessions = new InMemorySessionRepository();
+    const resetTokens = new InMemoryPasswordResetTokenRepository();
+    const uow = new InMemoryUnitOfWork(users, sessions, resetTokens);
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    resetTokens.insert(PasswordResetToken.issue({ id: 't-1', userId: 'u-1', tokenHash: 'a'.repeat(64), now: t0 }));
+    const boom = new Error('boom');
+    const later = new Date('2026-11-16T12:06:00.000Z');
+
+    expect(() =>
+      uow.run(({ resetTokens: tx }) => {
+        expect(tx).toBe(resetTokens);
+        tx.invalidateAllForUser('u-1', later);
+        tx.insert(PasswordResetToken.issue({ id: 't-2', userId: 'u-1', tokenHash: 'b'.repeat(64), now: later }));
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    expect(resetTokens.findByTokenHash('a'.repeat(64))?.invalidatedAt).toBeNull();
+    expect(resetTokens.findByTokenHash('b'.repeat(64))).toBeNull();
+    expect(resetTokens.latestCreatedAtForUser('u-1')?.toISOString()).toBe(t0.toISOString());
+  });
+
+  it('sin tercer parámetro usa un repositorio de tokens propio', () => {
+    const { uow } = setup();
+
+    const latest = uow.run(({ resetTokens }) => resetTokens.latestCreatedAtForUser('u-1'));
+
+    expect(latest).toBeNull();
   });
 
   it('rechaza una fn que devuelve una Promise y no deja sus cambios síncronos', () => {

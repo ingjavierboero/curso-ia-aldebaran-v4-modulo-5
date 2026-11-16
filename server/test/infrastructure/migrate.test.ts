@@ -111,6 +111,55 @@ describe('base de datos', () => {
     expect(sqlite.prepare('SELECT COUNT(*) AS n FROM job_runs').get()).toEqual({ n: 2 });
   });
 
+  // FEAT-008: password_reset_tokens con token_hash UNIQUE, índice por usuario y FK en cascada
+  it('test_migracion_password_reset_tokens', () => {
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+
+    migrate(db);
+
+    const sqlite = db.$client;
+    const columns = sqlite.prepare("PRAGMA table_info('password_reset_tokens')").all() as {
+      name: string; type: string; notnull: number; pk: number;
+    }[];
+    expect(columns.map((c) => [c.name, c.type.toLowerCase(), c.notnull, c.pk])).toEqual([
+      ['id', 'text', 1, 1],
+      ['user_id', 'text', 1, 0],
+      ['token_hash', 'text', 1, 0],
+      ['created_at', 'text', 1, 0],
+      ['expires_at', 'text', 1, 0],
+      ['used_at', 'text', 0, 0],
+      ['invalidated_at', 'text', 0, 0],
+    ]);
+
+    const indexes = sqlite.prepare("PRAGMA index_list('password_reset_tokens')").all() as { name: string; unique: number }[];
+    const colsOf = (name: string) =>
+      (sqlite.prepare(`PRAGMA index_info('${name}')`).all() as { name: string }[]).map((c) => c.name);
+    const uniqueCols = indexes.filter((i) => i.unique === 1).flatMap((i) => colsOf(i.name));
+    expect(uniqueCols).toContain('token_hash');
+    const userIdx = indexes.find((i) => i.name === 'password_reset_tokens_user_id_idx');
+    expect(userIdx?.unique).toBe(0);
+    expect(colsOf('password_reset_tokens_user_id_idx')).toEqual(['user_id']);
+
+    const fks = sqlite.prepare("PRAGMA foreign_key_list('password_reset_tokens')").all() as {
+      table: string; from: string; to: string; on_delete: string;
+    }[];
+    expect(fks).toEqual([expect.objectContaining({ table: 'users', from: 'user_id', to: 'id', on_delete: 'CASCADE' })]);
+
+    // borrar el usuario borra sus tokens
+    sqlite
+      .prepare("INSERT INTO users (id, name, email, role, password_hash, created_at) VALUES (?, 'N', ?, 'admin', 'h', '2026-11-16T00:00:00.000Z')")
+      .run('u1', 'a@b.co');
+    const insertToken = sqlite.prepare(
+      "INSERT INTO password_reset_tokens (id, user_id, token_hash, created_at, expires_at) VALUES (?, 'u1', ?, '2026-11-16T12:00:00.000Z', '2026-11-16T12:10:00.000Z')",
+    );
+    insertToken.run('t1', 'a'.repeat(64));
+    insertToken.run('t2', 'b'.repeat(64));
+    expect(() => insertToken.run('t3', 'a'.repeat(64))).toThrow(/UNIQUE/);
+    sqlite.prepare("DELETE FROM users WHERE id = 'u1'").run();
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM password_reset_tokens').get()).toEqual({ n: 0 });
+  });
+
   // createDb crea el directorio faltante con permisos 0700 y el archivo con 0600
   it('test_createdb_crea_directorio_0700_y_archivo_0600', () => {
     const dir = join(workDir, 'nested', 'data');

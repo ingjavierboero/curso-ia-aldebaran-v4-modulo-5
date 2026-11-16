@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Email } from '../../src/domain/user/Email.js';
+import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
 import { User } from '../../src/domain/user/User.js';
+import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
@@ -89,6 +91,31 @@ describe('DrizzleUnitOfWork', () => {
     expect(new DrizzleUserRepository(t.db).findById('u-1')?.status).toBe('activo');
     expect(outsideSessions.findByTokenHash('a'.repeat(64))?.id).toBe('s-1');
     expect(outsideSessions.findByTokenHash('b'.repeat(64))?.id).toBe('s-2');
+    expect(t.db.$client.inTransaction).toBe(false);
+  });
+
+  // FEAT-008: los cambios sobre resetTokens se revierten junto con los demás repositorios
+  it('test_uow_error_revierte_reset_tokens', () => {
+    new DrizzleUserRepository(t.db).insert(makeUser('u-1', 'a@empresa.com'));
+    const outside = new DrizzlePasswordResetTokenRepository(t.db);
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    outside.insert(PasswordResetToken.issue({ id: 't-1', userId: 'u-1', tokenHash: 'a'.repeat(64), now: t0 }));
+    const uow = new DrizzleUnitOfWork(t.db);
+    const boom = new Error('boom');
+    const later = new Date('2026-11-16T12:06:00.000Z');
+
+    expect(() =>
+      uow.run(({ resetTokens }) => {
+        resetTokens.invalidateAllForUser('u-1', later);
+        resetTokens.insert(PasswordResetToken.issue({ id: 't-2', userId: 'u-1', tokenHash: 'b'.repeat(64), now: later }));
+        expect(resetTokens.latestCreatedAtForUser('u-1')?.toISOString()).toBe(later.toISOString());
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    expect(outside.findByTokenHash('a'.repeat(64))?.invalidatedAt).toBeNull();
+    expect(outside.findByTokenHash('b'.repeat(64))).toBeNull();
+    expect(outside.latestCreatedAtForUser('u-1')?.toISOString()).toBe(t0.toISOString());
     expect(t.db.$client.inTransaction).toBe(false);
   });
 

@@ -15,6 +15,7 @@ import { User, type UserRole, type UserStatus } from '../../src/domain/user/User
 import { FakeClock } from './FakeClock.js';
 import { FakePasswordHasher } from './FakePasswordHasher.js';
 import { FakeSessionTokenGenerator } from './FakeSessionTokenGenerator.js';
+import { InMemoryPasswordResetTokenRepository } from './InMemoryPasswordResetTokenRepository.js';
 import { InMemorySessionRepository } from './InMemorySessionRepository.js';
 import { InMemoryUnitOfWork } from './InMemoryUnitOfWork.js';
 import { InMemoryUserRepository } from './InMemoryUserRepository.js';
@@ -35,7 +36,8 @@ export interface SeedUserOptions {
 export function createAuthContext() {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
-  const uow = new InMemoryUnitOfWork(users, sessions);
+  const resetTokens = new InMemoryPasswordResetTokenRepository();
+  const uow = new InMemoryUnitOfWork(users, sessions, resetTokens);
   const clock = new FakeClock();
   const hasher = new FakePasswordHasher();
   const tokens = new FakeSessionTokenGenerator();
@@ -72,6 +74,7 @@ export function createAuthContext() {
   return {
     users,
     sessions,
+    resetTokens,
     uow,
     clock,
     hasher,
