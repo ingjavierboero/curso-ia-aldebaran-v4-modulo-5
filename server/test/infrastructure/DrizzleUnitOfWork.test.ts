@@ -8,11 +8,15 @@ import { Email } from '../../src/domain/shared/Email.js';
 import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
 import { User } from '../../src/domain/user/User.js';
+import { BillingHour } from '../../src/domain/settings/BillingHour.js';
+import { BillingSettings } from '../../src/domain/settings/BillingSettings.js';
+import { PointOfSale } from '../../src/domain/settings/PointOfSale.js';
 import { DrizzleClientProductRepository } from '../../src/infrastructure/db/DrizzleClientProductRepository.js';
 import { DrizzleClientRepository } from '../../src/infrastructure/db/DrizzleClientRepository.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleProductRepository } from '../../src/infrastructure/db/DrizzleProductRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
+import { DrizzleSettingsRepository } from '../../src/infrastructure/db/DrizzleSettingsRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { createTestDb, type TestDb } from '../support/sqliteTestDb.js';
@@ -168,6 +172,37 @@ describe('DrizzleUnitOfWork', () => {
     expect(outsideProducts.list().map((p) => [p.id, p.status])).toEqual([['p-1', 'activo']]);
     expect(outsideAssignments.listProductIdsOf('c-1')).toEqual(['p-1']);
     expect(outsideAssignments.listProductIdsOf('c-2')).toEqual([]);
+    expect(t.db.$client.inTransaction).toBe(false);
+  });
+
+  // FEAT-011: la configuración se revierte junto con los demás repositorios
+  it('test_uow_error_revierte_settings', () => {
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    const later = new Date('2026-11-16T13:00:00.000Z');
+    const outside = new DrizzleSettingsRepository(t.db);
+    outside.saveBilling(
+      BillingSettings.defaults().withChanges({ billingHour: BillingHour.parse('09:00'), pointOfSale: PointOfSale.of(3) }),
+      t0,
+    );
+    const uow = new DrizzleUnitOfWork(t.db);
+    const boom = new Error('boom');
+
+    expect(() =>
+      uow.run(({ settings }) => {
+        settings.saveBilling(
+          settings.get().withChanges({ billingHour: BillingHour.parse('18:45'), issuerLegalName: 'Otra SRL' }),
+          later,
+        );
+        expect(settings.get().billingHour.value).toBe('18:45');
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    const after = outside.get();
+    expect(after.billingHour.value).toBe('09:00');
+    expect(after.pointOfSale?.value).toBe(3);
+    expect(after.issuerLegalName).toBeNull();
+    expect(t.db.$client.prepare('SELECT updated_at FROM settings').all()).toEqual([{ updated_at: t0.toISOString() }]);
     expect(t.db.$client.inTransaction).toBe(false);
   });
 

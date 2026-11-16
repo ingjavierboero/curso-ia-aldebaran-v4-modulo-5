@@ -1,0 +1,21 @@
+CREATE TABLE `settings` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`billing_hour` text NOT NULL,
+	`point_of_sale` integer,
+	`issuer_legal_name` text,
+	`issuer_address` text,
+	`issuer_iva_condition` integer,
+	`issuer_iibb` text,
+	`issuer_activity_start` text,
+	`issuer_trade_name` text,
+	`updated_at` text NOT NULL,
+	CONSTRAINT "settings_single_row_check" CHECK("settings"."id" = 1),
+	CONSTRAINT "settings_billing_hour_check" CHECK("settings"."billing_hour" GLOB '[0-2][0-9]:[0-5][0-9]' AND "settings"."billing_hour" <= '23:59'),
+	CONSTRAINT "settings_point_of_sale_check" CHECK("settings"."point_of_sale" BETWEEN 1 AND 99999),
+	CONSTRAINT "settings_issuer_legal_name_check" CHECK(length("settings"."issuer_legal_name") BETWEEN 1 AND 200),
+	CONSTRAINT "settings_issuer_address_check" CHECK(length("settings"."issuer_address") BETWEEN 1 AND 200),
+	CONSTRAINT "settings_issuer_iva_condition_check" CHECK("settings"."issuer_iva_condition" IN (4, 6, 13, 16)),
+	CONSTRAINT "settings_issuer_iibb_check" CHECK(length("settings"."issuer_iibb") BETWEEN 1 AND 50),
+	CONSTRAINT "settings_issuer_activity_start_check" CHECK("settings"."issuer_activity_start" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	CONSTRAINT "settings_issuer_trade_name_check" CHECK(length("settings"."issuer_trade_name") BETWEEN 1 AND 200)
+);

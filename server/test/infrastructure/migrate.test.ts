@@ -1,6 +1,8 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { migrate as drizzleMigrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDb, type Db } from '../../src/infrastructure/db/client.js';
 import { migrate } from '../../src/infrastructure/db/migrate.js';
@@ -275,6 +277,124 @@ describe('base de datos', () => {
     expect(() => sqlite.prepare("DELETE FROM clients WHERE id = 'c1'").run()).toThrow(/FOREIGN KEY/);
     expect(() => sqlite.prepare("DELETE FROM products WHERE id = 'p1'").run()).toThrow(/FOREIGN KEY/);
     expect(sqlite.prepare('SELECT COUNT(*) AS n FROM client_products').get()).toEqual({ n: 2 });
+  });
+
+  // FEAT-011: settings de una sola fila, con los CHECK derivados del dominio (ADR-008)
+  it('test_migracion_settings_check_invalido_rechazado', () => {
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+
+    migrate(db);
+
+    const sqlite = db.$client;
+    const columns = sqlite.prepare("PRAGMA table_info('settings')").all() as {
+      name: string; type: string; notnull: number; dflt_value: unknown; pk: number;
+    }[];
+    expect(columns.map((c) => [c.name, c.type.toLowerCase(), c.notnull, c.dflt_value, c.pk])).toEqual([
+      ['id', 'integer', 1, null, 1],
+      ['billing_hour', 'text', 1, null, 0],
+      ['point_of_sale', 'integer', 0, null, 0],
+      ['issuer_legal_name', 'text', 0, null, 0],
+      ['issuer_address', 'text', 0, null, 0],
+      ['issuer_iva_condition', 'integer', 0, null, 0],
+      ['issuer_iibb', 'text', 0, null, 0],
+      ['issuer_activity_start', 'text', 0, null, 0],
+      ['issuer_trade_name', 'text', 0, null, 0],
+      ['updated_at', 'text', 1, null, 0],
+    ]);
+    // sin índices adicionales: se lee por clave primaria
+    expect(sqlite.prepare("PRAGMA index_list('settings')").all()).toEqual([]);
+
+    const insert = sqlite.prepare(
+      'INSERT INTO settings (id, billing_hour, point_of_sale, issuer_legal_name, issuer_address, issuer_iva_condition, issuer_iibb, issuer_activity_start, issuer_trade_name, updated_at) ' +
+        "VALUES (@id, @hour, @pos, @legal, @address, @iva, @iibb, @start, @trade, '2026-11-16T00:00:00.000Z')",
+    );
+    const valid = {
+      id: 1, hour: '11:00', pos: 1, legal: 'R', address: 'D', iva: 4, iibb: 'I', start: '2020-01-01', trade: 'F',
+    };
+    const rejected = (overrides: Record<string, unknown>, pattern: RegExp): void => {
+      expect(() => insert.run({ ...valid, ...overrides })).toThrow(pattern);
+    };
+
+    // la única fila admitida es la 1
+    rejected({ id: 2 }, /CHECK/);
+    rejected({ id: 0 }, /CHECK/);
+    // punto de venta 1–99999
+    rejected({ pos: 0 }, /CHECK/);
+    rejected({ pos: 100000 }, /CHECK/);
+    // condición frente al IVA de la empresa emisora: 4, 6, 13 o 16
+    for (const iva of [1, 5, 7, 99]) rejected({ iva }, /CHECK/);
+    // hora HH:MM hasta 23:59, obligatoria
+    for (const hour of ['24:00', '25:00', '11:60', '9:00', '11:00:00', 'ab:cd', '']) rejected({ hour }, /CHECK/);
+    rejected({ hour: null }, /NOT NULL/);
+    // largos de los textos
+    for (const field of ['legal', 'address', 'trade']) {
+      rejected({ [field]: '' }, /CHECK/);
+      rejected({ [field]: 'x'.repeat(201) }, /CHECK/);
+    }
+    rejected({ iibb: '' }, /CHECK/);
+    rejected({ iibb: 'x'.repeat(51) }, /CHECK/);
+    // fecha YYYY-MM-DD
+    for (const start of ['2020-1-01', '01/01/2020', '2020-01-01T00:00']) rejected({ start }, /CHECK/);
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM settings').get()).toEqual({ n: 0 });
+
+    // los límites y cada condición admitida pasan; los opcionales aceptan NULL
+    insert.run({ ...valid, hour: '23:59', pos: 99999, legal: 'x'.repeat(200), iibb: 'y'.repeat(50) });
+    for (const iva of [6, 13, 16]) {
+      sqlite.prepare('UPDATE settings SET issuer_iva_condition = ? WHERE id = 1').run(iva);
+    }
+    sqlite
+      .prepare(
+        "UPDATE settings SET billing_hour = '00:00', point_of_sale = NULL, issuer_legal_name = NULL, issuer_address = NULL, issuer_iva_condition = NULL, issuer_iibb = NULL, issuer_activity_start = NULL, issuer_trade_name = NULL WHERE id = 1",
+      )
+      .run();
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM settings').get()).toEqual({ n: 1 });
+  });
+
+  // FEAT-011: la migración 0004 corre sobre una base que ya tiene datos de FEAT-010 y no los toca.
+  // Depende del formato de `meta/_journal.json` de drizzle-kit y de que el migrador aplique por
+  // `when` y no por hash: si falla tras actualizar drizzle-orm, mirar ahí primero (W4, Block 2).
+  it('la migración de settings corre sobre una base con clientes y productos', () => {
+    const drizzleDir = fileURLToPath(new URL('../../drizzle', import.meta.url));
+    const journal = JSON.parse(readFileSync(join(drizzleDir, 'meta', '_journal.json'), 'utf8')) as {
+      entries: { idx: number; tag: string }[];
+    };
+    const upToFeat010 = journal.entries.filter((e) => e.idx <= 3);
+    expect(upToFeat010.map((e) => e.tag)).toContain('0003_fluffy_black_cat');
+    // copia de las migraciones hasta la 0003, como estaba la base antes de FEAT-011
+    const oldMigrations = join(workDir, 'drizzle-0003');
+    mkdirSync(join(oldMigrations, 'meta'), { recursive: true });
+    for (const entry of upToFeat010) copyFileSync(join(drizzleDir, `${entry.tag}.sql`), join(oldMigrations, `${entry.tag}.sql`));
+    writeFileSync(join(oldMigrations, 'meta', '_journal.json'), JSON.stringify({ ...journal, entries: upToFeat010 }));
+
+    const db = createDb(join(workDir, 'aldebaran.db'));
+    opened.push(db);
+    drizzleMigrate(db, { migrationsFolder: oldMigrations });
+    const sqlite = db.$client;
+    expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings'").all()).toEqual([]);
+    sqlite
+      .prepare(
+        "INSERT INTO clients (id, business_name, cuit, address, billing_email, iva_condition, status, created_at) VALUES ('c1', 'R', '30711111111', 'D', 'a@b.co', 1, 'activo', '2026-11-16T00:00:00.000Z')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO products (id, name, name_normalized, price_cents, currency, status, created_at) VALUES ('p1', 'N', 'n', 100, 'ARS', 'activo', '2026-11-16T00:00:00.000Z')",
+      )
+      .run();
+    sqlite.prepare("INSERT INTO client_products (client_id, product_id, created_at) VALUES ('c1', 'p1', '2026-11-16T00:00:00.000Z')").run();
+
+    migrate(db);
+
+    expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings'").all()).toEqual([
+      { name: 'settings' },
+    ]);
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM settings').get()).toEqual({ n: 0 });
+    expect(sqlite.prepare('SELECT id FROM clients').all()).toEqual([{ id: 'c1' }]);
+    expect(sqlite.prepare('SELECT id FROM products').all()).toEqual([{ id: 'p1' }]);
+    expect(sqlite.prepare('SELECT client_id, product_id FROM client_products').all()).toEqual([
+      { client_id: 'c1', product_id: 'p1' },
+    ]);
   });
 
   // createDb crea el directorio faltante con permisos 0700 y el archivo con 0600

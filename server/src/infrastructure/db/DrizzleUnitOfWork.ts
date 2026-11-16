@@ -5,6 +5,7 @@ import { DrizzleClientRepository } from './DrizzleClientRepository.js';
 import { DrizzlePasswordResetTokenRepository } from './DrizzlePasswordResetTokenRepository.js';
 import { DrizzleProductRepository } from './DrizzleProductRepository.js';
 import { DrizzleSessionRepository } from './DrizzleSessionRepository.js';
+import { DrizzleSettingsRepository } from './DrizzleSettingsRepository.js';
 import { DrizzleUserRepository } from './DrizzleUserRepository.js';
 
 /**
@@ -26,6 +27,7 @@ export class DrizzleUnitOfWork implements UnitOfWork {
           clients: new DrizzleClientRepository(tx),
           products: new DrizzleProductRepository(tx),
           clientProducts: new DrizzleClientProductRepository(tx),
+          settings: new DrizzleSettingsRepository(tx),
         }),
       { behavior: 'immediate' },
     );
