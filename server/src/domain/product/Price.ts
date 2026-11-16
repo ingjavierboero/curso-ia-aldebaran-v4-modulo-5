@@ -27,12 +27,21 @@ export class Price {
 
   /** De texto (`"15000.5"`) a centavos; mayor a cero. Si no, `InvalidPrice` / `InvalidCurrency`. */
   static parse(text: string, currency: string): Price {
+    return Price.fromCents(Price.parseAmount(text), parseCurrency(currency));
+  }
+
+  /**
+   * Solo el monto, sin moneda: de texto (`"15000.5"`) a centavos enteros, con la misma gramática y
+   * mayor a cero. Si no, `InvalidPrice`.
+   */
+  static parseAmount(text: string): number {
     if (typeof text !== 'string') throw new InvalidPrice();
     const match = PRICE_FORMAT.exec(text);
     if (match === null) throw new InvalidPrice();
     const [, integerPart = '', decimalPart = ''] = match;
     const cents = Number(integerPart) * 100 + Number(decimalPart.padEnd(2, '0'));
-    return Price.fromCents(cents, parseCurrency(currency));
+    if (cents <= 0 || cents > MAX_CENTS) throw new InvalidPrice();
+    return cents;
   }
 
   /** Rehidrata un precio guardado en centavos: entero, entre 1 y 999999999.99. */

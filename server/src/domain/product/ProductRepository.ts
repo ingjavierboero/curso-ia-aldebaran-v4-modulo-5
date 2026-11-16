@@ -10,10 +10,15 @@ export interface ProductRepository {
   /** Por `Product.nameNormalized` (FR-11). */
   findByNameNormalized(nameNormalized: string): Product | null;
   /**
-   * Los productos con esos ids que existen, ordenados por nombre. Los inexistentes no aparecen, un
-   * id repetido aparece una sola vez y `[]` devuelve `[]`.
+   * Los productos con esos ids que existen, en orden binario por nombre y después por id. Los
+   * inexistentes no aparecen, un id repetido aparece una sola vez y `[]` devuelve `[]`. El orden
+   * visible lo aplica la capa de aplicación (`application/shared/spanishOrder.ts`).
    */
   findByIds(ids: readonly string[]): Product[];
-  /** Todos los productos, Activos e Inactivos, ordenados por nombre (FR-18). */
+  /**
+   * Todos los productos, Activos e Inactivos, en orden binario por nombre y después por id. No es el
+   * orden visible de FR-18: ese lo aplica la capa de aplicación con la colación en español
+   * (`application/shared/spanishOrder.ts`).
+   */
   list(): Product[];
 }

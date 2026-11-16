@@ -8,8 +8,8 @@ import { parseUserName, parseUserRole, User } from '../../domain/user/User.js';
 import { type PublicUser, toPublicUser } from '../auth/dto/PublicUser.js';
 import type { Actor } from '../shared/Actor.js';
 import type { IdGenerator } from '../shared/IdGenerator.js';
+import { requireActor } from '../shared/requireActor.js';
 import type { UnitOfWork } from '../shared/UnitOfWork.js';
-import { requireActor } from './requireActor.js';
 
 export interface CreateUserDeps {
   uow: UnitOfWork;

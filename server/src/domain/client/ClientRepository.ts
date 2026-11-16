@@ -16,6 +16,10 @@ export interface ClientRepository {
   findByCuit(cuit: Cuit): Client | null;
   /** Sin distinguir mayúsculas: el `Email` ya viene normalizado (FR-07). */
   findByBillingEmail(email: Email): Client | null;
-  /** Todos los clientes, Activos e Inactivos, ordenados por razón social (FR-16). */
+  /**
+   * Todos los clientes, Activos e Inactivos, en orden binario por razón social y después por id. No es
+   * el orden visible de FR-16: ese lo aplica la capa de aplicación con la colación en español
+   * (`application/shared/spanishOrder.ts`).
+   */
   list(): Client[];
 }

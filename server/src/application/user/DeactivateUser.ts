@@ -3,8 +3,8 @@ import { assertKeepsAnActiveAdmin } from '../../domain/user/AdminPolicy.js';
 import { UserNotFound } from '../../domain/user/errors.js';
 import { type PublicUser, toPublicUser } from '../auth/dto/PublicUser.js';
 import type { Actor } from '../shared/Actor.js';
+import { requireActor } from '../shared/requireActor.js';
 import type { UnitOfWork } from '../shared/UnitOfWork.js';
-import { requireActor } from './requireActor.js';
 
 export interface DeactivateUserDeps {
   uow: UnitOfWork;

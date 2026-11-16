@@ -49,4 +49,15 @@ describe('Price', () => {
     expect(() => Price.parse('100', '')).toThrow(InvalidCurrency);
     expect(() => Price.fromCents(100, 'EUR' as 'ARS')).toThrow(InvalidCurrency);
   });
+
+  // Solo el monto, sin moneda: misma gramática y mismo > 0 que `parse`
+  it('parseAmount devuelve centavos y rechaza lo mismo que parse', () => {
+    expect(Price.parseAmount('0.01')).toBe(1);
+    expect(Price.parseAmount('15000.5')).toBe(1_500_050);
+    expect(Price.parseAmount('999999999.99')).toBe(99_999_999_999);
+    for (const invalid of ['0', '0.00', '-100', '1e3', '+5', '1,50', '1.234', '', '1000000000']) {
+      expect(() => Price.parseAmount(invalid), invalid).toThrow(InvalidPrice);
+    }
+    expect(() => Price.parseAmount(15 as unknown as string)).toThrow(InvalidPrice);
+  });
 });
