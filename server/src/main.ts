@@ -78,26 +78,31 @@ async function main(): Promise<void> {
   // recuperación (reuso deliberado de `SessionTokenGenerator`, spec FEAT-008).
   const resetTokens = new DrizzlePasswordResetTokenRepository(db);
   const resetTokenGenerator = new CryptoSessionTokenGenerator();
-  // Block 4 suma estos tres casos de uso a `AppDeps`; hasta entonces `createApp` los recibe por
-  // spread y no los usa.
-  const passwordReset = {
-    requestPasswordReset: new RequestPasswordReset({
-      users,
-      resetTokens,
-      uow,
-      resetTokenGenerator,
-      ids,
-      clock,
-      emailSender,
-      resetLog: createPasswordResetLog(logger, clock),
-      appUrl,
-    }),
-    checkPasswordResetToken: new CheckPasswordResetToken({ users, resetTokens, resetTokenGenerator, clock }),
-    resetPasswordWithToken: new ResetPasswordWithToken({ users, resetTokens, uow, hasher, resetTokenGenerator, clock }),
-  };
+  const requestPasswordReset = new RequestPasswordReset({
+    users,
+    resetTokens,
+    uow,
+    resetTokenGenerator,
+    ids,
+    clock,
+    emailSender,
+    resetLog: createPasswordResetLog(logger, clock),
+    appUrl,
+  });
+  const checkPasswordResetToken = new CheckPasswordResetToken({ users, resetTokens, resetTokenGenerator, clock });
+  const resetPasswordWithToken = new ResetPasswordWithToken({
+    users,
+    resetTokens,
+    uow,
+    hasher,
+    resetTokenGenerator,
+    clock,
+  });
 
   const app = createApp({
-    ...passwordReset,
+    requestPasswordReset,
+    checkPasswordResetToken,
+    resetPasswordWithToken,
     login: new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash }),
     logout: new Logout({ sessions, tokens }),
     changeOwnPassword: new ChangeOwnPassword({ users, uow, hasher, tokens }),

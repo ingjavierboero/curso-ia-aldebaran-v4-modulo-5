@@ -4,6 +4,7 @@ import {
   FirstAdminAlreadyExists,
   IncorrectCurrentPassword,
   InvalidCredentials,
+  InvalidResetToken,
   Unauthenticated,
 } from '../../application/auth/errors.js';
 import type { Clock } from '../../domain/shared/Clock.js';
@@ -79,7 +80,9 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       err instanceof InvalidRole ||
       err instanceof PasswordUnchanged ||
       // 400 y no 401: la web toma cualquier 401 como sesión perdida y navega al login (FEAT-007).
-      err instanceof IncorrectCurrentPassword
+      err instanceof IncorrectCurrentPassword ||
+      // FEAT-008: enlace de recuperación inexistente, vencido, usado o anulado; mismo mensaje para todos.
+      err instanceof InvalidResetToken
     ) {
       res.status(400).json({ error: err.message });
       return;

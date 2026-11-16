@@ -26,9 +26,31 @@ export function createJsonLogger(write: (line: string) => void = (line) => proce
   };
 }
 
-export type AuthEvent = 'login' | 'first_admin' | 'password_change';
-/** `blocked`: la compuerta del límite de intentos rechazó el pedido con 429 (FEAT-009). */
-export type AuthOutcome = 'ok' | 'invalid' | 'conflict' | 'wrong_current' | 'error' | 'blocked';
+export type AuthEvent =
+  | 'login'
+  | 'first_admin'
+  | 'password_change'
+  // FEAT-008: pedido del enlace de recuperación y cambio de contraseña con el enlace.
+  | 'password_reset_request'
+  | 'password_reset_confirm';
+/**
+ * `blocked`: la compuerta del límite de intentos rechazó el pedido con 429 (FEAT-009).
+ * FEAT-008: `sent`/`send_failed` (resultado del envío del enlace, los escribe `PasswordResetLog`),
+ * `no_user` (email inválido o sin usuario Activo), `throttled` (dentro de los 5 minutos) e
+ * `invalid_token` (enlace inexistente, vencido, usado o anulado).
+ */
+export type AuthOutcome =
+  | 'ok'
+  | 'invalid'
+  | 'conflict'
+  | 'wrong_current'
+  | 'error'
+  | 'blocked'
+  | 'sent'
+  | 'no_user'
+  | 'throttled'
+  | 'send_failed'
+  | 'invalid_token';
 
 /** El email normalizado por `Email.create`, o `null` si no es un email válido (`InvalidEmail`). */
 function loggableEmail(rawEmail: string): string | null {
