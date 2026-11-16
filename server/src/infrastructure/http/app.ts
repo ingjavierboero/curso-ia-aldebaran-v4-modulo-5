@@ -2,11 +2,14 @@ import cookieParser from 'cookie-parser';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import type { AuthenticateSession } from '../../application/auth/AuthenticateSession.js';
 import type { ChangeOwnPassword } from '../../application/auth/ChangeOwnPassword.js';
+import type { CheckPasswordResetToken } from '../../application/auth/CheckPasswordResetToken.js';
 import type { GetSetupStatus } from '../../application/auth/GetSetupStatus.js';
 import type { Login } from '../../application/auth/Login.js';
 import type { Logout } from '../../application/auth/Logout.js';
 import type { PeekSession } from '../../application/auth/PeekSession.js';
 import type { RegisterFirstAdmin } from '../../application/auth/RegisterFirstAdmin.js';
+import type { RequestPasswordReset } from '../../application/auth/RequestPasswordReset.js';
+import type { ResetPasswordWithToken } from '../../application/auth/ResetPasswordWithToken.js';
 import type { GetHealth } from '../../application/health/GetHealth.js';
 import type { CreateUser } from '../../application/user/CreateUser.js';
 import type { DeactivateUser } from '../../application/user/DeactivateUser.js';
@@ -22,6 +25,7 @@ import { bodyEmailOf, createAttemptGate } from './rateLimit/attemptGate.js';
 import { requireJson } from './requireJson.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { passwordResetRoutes } from './routes/passwordReset.js';
 import { setupRoutes } from './routes/setup.js';
 import { usersRoutes } from './routes/users.js';
 import { defaultSecureCookie } from './sessionCookie.js';
@@ -44,6 +48,10 @@ export interface AppDeps {
   updateUser: Pick<UpdateUser, 'execute'>;
   deactivateUser: Pick<DeactivateUser, 'execute'>;
   reactivateUser: Pick<ReactivateUser, 'execute'>;
+  /** Recuperación de contraseña por email (FEAT-008): rutas públicas con límite de intentos. */
+  requestPasswordReset: Pick<RequestPasswordReset, 'execute'>;
+  checkPasswordResetToken: Pick<CheckPasswordResetToken, 'execute'>;
+  resetPasswordWithToken: Pick<ResetPasswordWithToken, 'execute'>;
   clock: Clock;
   logger: Logger;
   /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
@@ -95,10 +103,43 @@ export function createApp(deps: AppDeps): Express {
     logger,
     emailOf: (req) => req.user?.email ?? '',
   });
+  // FEAT-008 (D-05): pedidos de enlace por un lado; chequeo y confirmación comparten su registro.
+  const resetRequestTracker = new AttemptTracker(clock);
+  const resetConfirmTracker = new AttemptTracker(clock);
+  const resetRequestGate = createAttemptGate({
+    operation: 'password_reset_request',
+    tracker: resetRequestTracker,
+    clock,
+    logger,
+    emailOf: bodyEmailOf,
+  });
+  // Sin email en el body: el bloqueo se registra con email `null`.
+  const resetCheckGate = createAttemptGate({
+    operation: 'password_reset_confirm',
+    tracker: resetConfirmTracker,
+    clock,
+    logger,
+    emailOf: () => '',
+  });
+  const resetConfirmGate = createAttemptGate({
+    operation: 'password_reset_confirm',
+    tracker: resetConfirmTracker,
+    clock,
+    logger,
+    emailOf: () => '',
+  });
 
   app.use(
     '/api',
     authRoutes({ ...deps, secureCookie, loginGate, loginTracker, passwordChangeGate, passwordChangeTracker }),
+    passwordResetRoutes({
+      ...deps,
+      resetRequestGate,
+      resetRequestTracker,
+      resetCheckGate,
+      resetConfirmGate,
+      resetConfirmTracker,
+    }),
     setupRoutes({ ...deps, firstAdminGate, firstAdminTracker }),
     healthRoutes(deps),
     usersRoutes(deps),

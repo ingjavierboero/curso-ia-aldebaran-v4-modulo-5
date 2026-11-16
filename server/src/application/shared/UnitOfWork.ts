@@ -1,9 +1,11 @@
+import type { PasswordResetTokenRepository } from '../../domain/auth/PasswordResetTokenRepository.js';
 import type { SessionRepository } from '../../domain/auth/SessionRepository.js';
 import type { UserRepository } from '../../domain/user/UserRepository.js';
 
 export interface TransactionalRepositories {
   users: UserRepository;
   sessions: SessionRepository;
+  resetTokens: PasswordResetTokenRepository;
 }
 
 /**

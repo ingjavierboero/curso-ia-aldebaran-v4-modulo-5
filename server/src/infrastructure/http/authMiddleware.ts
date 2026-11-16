@@ -28,6 +28,10 @@ const PUBLIC_ROUTES = new Set([
   // FEAT-003 (R-04): el chequeo de salud; el detalle lo decide la ruta con `PeekSession`.
   'GET /api/health',
   'HEAD /api/health',
+  // FEAT-008: recuperación de contraseña (pedido del enlace, chequeo y cambio con el enlace).
+  'POST /api/auth/password-reset',
+  'POST /api/auth/password-reset/check',
+  'POST /api/auth/password-reset/confirm',
 ]);
 
 export interface AuthMiddlewareDeps {

@@ -1,7 +1,8 @@
 import { Alert, Button, Descriptions, Form, Input, Typography } from 'antd';
 import { useState } from 'react';
 import { changePassword, errorText } from '../api/authApi';
-import { ROLE_LABELS, USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH } from '../api/userRules';
+import { CONFIRM_PASSWORD_RULES, NEW_PASSWORD_FIELD, NEW_PASSWORD_RULES } from '../api/passwordRules';
+import { ROLE_LABELS } from '../api/userRules';
 import { AppLayout } from '../components/AppLayout';
 import { Stack } from '../components/Stack';
 import { useAuthStore } from '../store/authStore';
@@ -82,33 +83,14 @@ export function ProfilePage() {
           >
             <Input.Password autoComplete="current-password" />
           </Form.Item>
-          <Form.Item
-            label="Contraseña nueva"
-            name="newPassword"
-            rules={[
-              { required: true, message: 'Ingresá la contraseña nueva' },
-              {
-                min: USER_PASSWORD_MIN_LENGTH,
-                max: USER_PASSWORD_MAX_LENGTH,
-                message: `La contraseña debe tener entre ${USER_PASSWORD_MIN_LENGTH} y ${USER_PASSWORD_MAX_LENGTH} caracteres`,
-              },
-            ]}
-          >
+          <Form.Item label="Contraseña nueva" name={NEW_PASSWORD_FIELD} rules={NEW_PASSWORD_RULES}>
             <Input.Password autoComplete="new-password" />
           </Form.Item>
           <Form.Item
             label="Repetir contraseña nueva"
             name="confirmPassword"
-            dependencies={['newPassword']}
-            rules={[
-              { required: true, message: 'Repetí la contraseña nueva' },
-              ({ getFieldValue }) => ({
-                validator(_rule, value: unknown) {
-                  if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
-                  return Promise.reject(new Error('Las contraseñas no coinciden'));
-                },
-              }),
-            ]}
+            dependencies={[NEW_PASSWORD_FIELD]}
+            rules={CONFIRM_PASSWORD_RULES}
           >
             <Input.Password autoComplete="new-password" />
           </Form.Item>

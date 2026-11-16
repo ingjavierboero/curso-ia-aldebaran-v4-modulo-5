@@ -15,6 +15,13 @@
       "when": 1794681295328,
       "tag": "0001_left_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794790493931,
+      "tag": "0002_blushing_the_santerians",
+      "breakpoints": true
     }
   ]
 }

@@ -31,3 +31,15 @@ export class FirstAdminAlreadyExists extends Error {
     super(message);
   }
 }
+
+/**
+ * El token de recuperación no existe, tiene formato inválido, venció, ya se usó, fue anulado o es de
+ * un usuario Inactivo: mismo error para todos (FEAT-008, FR-09, FR-10).
+ */
+export class InvalidResetToken extends Error {
+  override readonly name = 'InvalidResetToken';
+
+  constructor(message = 'El enlace no es válido o venció') {
+    super(message);
+  }
+}

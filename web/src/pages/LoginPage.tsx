@@ -1,6 +1,6 @@
 import { Alert, Button, Form, Input } from 'antd';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ApiError, errorText, login, type LoginInput } from '../api/authApi';
 import { AuthCard } from '../components/AuthCard';
 import { Stack } from '../components/Stack';
@@ -66,6 +66,7 @@ export function LoginPage() {
             Ingresar
           </Button>
         </Form>
+        <Link to="/recuperar">Olvidé mi contraseña</Link>
       </Stack>
     </AuthCard>
   );

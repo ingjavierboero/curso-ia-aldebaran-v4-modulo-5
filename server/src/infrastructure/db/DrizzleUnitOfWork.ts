@@ -1,5 +1,6 @@
 import type { TransactionalRepositories, UnitOfWork } from '../../application/shared/UnitOfWork.js';
 import type { Db } from './client.js';
+import { DrizzlePasswordResetTokenRepository } from './DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from './DrizzleSessionRepository.js';
 import { DrizzleUserRepository } from './DrizzleUserRepository.js';
 
@@ -14,7 +15,12 @@ export class DrizzleUnitOfWork implements UnitOfWork {
 
   run<T>(fn: (repos: TransactionalRepositories) => T): T {
     return this.db.transaction(
-      (tx) => fn({ users: new DrizzleUserRepository(tx), sessions: new DrizzleSessionRepository(tx) }),
+      (tx) =>
+        fn({
+          users: new DrizzleUserRepository(tx),
+          sessions: new DrizzleSessionRepository(tx),
+          resetTokens: new DrizzlePasswordResetTokenRepository(tx),
+        }),
       { behavior: 'immediate' },
     );
   }

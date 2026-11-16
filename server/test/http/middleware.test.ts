@@ -156,6 +156,57 @@ describe('authMiddleware', () => {
     expect(calls).toEqual([]);
   });
 
+  // FEAT-008: las tres rutas de recuperación pasan sin sesión; cualquier variante exige sesión
+  it('test_middleware_rutas_de_recuperacion_publicas', async () => {
+    const calls: string[] = [];
+    t.cleanup();
+    t = await createTestApp({
+      requestPasswordReset: {
+        execute: () => {
+          calls.push('request');
+          return 'no_user';
+        },
+      },
+      checkPasswordResetToken: {
+        execute: () => {
+          calls.push('check');
+        },
+      },
+      resetPasswordWithToken: {
+        execute: () => {
+          calls.push('confirm');
+          return Promise.resolve();
+        },
+      },
+    });
+    const token = 'A'.repeat(43);
+
+    const req = await request(t.app).post('/api/auth/password-reset').send({ email: 'nadie@empresa.com' });
+    const check = await request(t.app).post('/api/auth/password-reset/check').send({ token });
+    const confirm = await request(t.app).post('/api/auth/password-reset/confirm').send({ token, newPassword: PASSWORD });
+
+    expect(req.status).toBe(200);
+    expect(check.status).toBe(204);
+    expect(confirm.status).toBe(204);
+    expect(calls).toEqual(['request', 'check', 'confirm']);
+    calls.length = 0;
+
+    const variants = [
+      await request(t.app).get('/api/auth/password-reset'),
+      await request(t.app).put('/api/auth/password-reset').send({ email: 'nadie@empresa.com' }),
+      await request(t.app).get('/api/auth/password-reset/check'),
+      await request(t.app).delete('/api/auth/password-reset/confirm'),
+      await request(t.app).post('/api/auth/password-reset/').send({ email: 'nadie@empresa.com' }),
+      await request(t.app).post('/api/auth/PASSWORD-RESET/check').send({ token }),
+      await request(t.app).post('/api/auth/password-reset/confirm/extra').send({ token, newPassword: PASSWORD }),
+    ];
+    for (const res of variants) {
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: 'Sesión no válida' });
+    }
+    expect(calls).toEqual([]);
+  });
+
   it('agregar /api/health a las rutas públicas no abre el resto de /api', async () => {
     const res = await request(t.app).get('/api/auth/session');
 

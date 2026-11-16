@@ -36,6 +36,28 @@ export const sessions = sqliteTable(
   (t) => [index('sessions_user_id_idx').on(t.userId)],
 );
 
+// Tokens de recuperación de contraseña (FEAT-008). El token en claro nunca se guarda.
+export const passwordResetTokens = sqliteTable(
+  'password_reset_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // hex SHA-256 del token (64 caracteres)
+    tokenHash: text('token_hash').notNull().unique(),
+    // ISO 8601
+    createdAt: text('created_at').notNull(),
+    // ISO 8601
+    expiresAt: text('expires_at').notNull(),
+    // ISO 8601; se cambió la contraseña con este token
+    usedAt: text('used_at'),
+    // ISO 8601; lo anuló otro token o un cambio de contraseña
+    invalidatedAt: text('invalidated_at'),
+  },
+  (t) => [index('password_reset_tokens_user_id_idx').on(t.userId)],
+);
+
 export const JOB_RUN_OUTCOMES = ['ok', 'error'] as const;
 
 // Corridas de procesos automáticos (FEAT-003). No guarda el mensaje de error (R-07).
@@ -56,4 +78,4 @@ export const jobRuns = sqliteTable(
   ],
 );
 
-export const schema = { users, sessions, jobRuns };
+export const schema = { users, sessions, jobRuns, passwordResetTokens };
