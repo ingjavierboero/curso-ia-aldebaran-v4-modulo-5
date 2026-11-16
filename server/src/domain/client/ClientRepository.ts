@@ -6,7 +6,8 @@ import type { Cuit } from './Cuit.js';
 export interface ClientRepository {
   /**
    * Lanza `DuplicateCuit` si el CUIT ya es de otro cliente y `DuplicateBillingEmail` si el email de
-   * facturación ya es de otro cliente (UNIQUE, NFR-01).
+   * facturación ya es de otro cliente (UNIQUE, NFR-01). Si chocan los dos a la vez, gana
+   * `DuplicateBillingEmail`.
    */
   insert(client: Client): void;
   /** Guarda todos los datos y el estado del cliente con ese id. Mismos errores de unicidad que `insert`. */

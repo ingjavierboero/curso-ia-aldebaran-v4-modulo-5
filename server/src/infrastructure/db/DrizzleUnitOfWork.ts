@@ -1,6 +1,9 @@
 import type { TransactionalRepositories, UnitOfWork } from '../../application/shared/UnitOfWork.js';
 import type { Db } from './client.js';
+import { DrizzleClientProductRepository } from './DrizzleClientProductRepository.js';
+import { DrizzleClientRepository } from './DrizzleClientRepository.js';
 import { DrizzlePasswordResetTokenRepository } from './DrizzlePasswordResetTokenRepository.js';
+import { DrizzleProductRepository } from './DrizzleProductRepository.js';
 import { DrizzleSessionRepository } from './DrizzleSessionRepository.js';
 import { DrizzleUserRepository } from './DrizzleUserRepository.js';
 
@@ -20,6 +23,9 @@ export class DrizzleUnitOfWork implements UnitOfWork {
           users: new DrizzleUserRepository(tx),
           sessions: new DrizzleSessionRepository(tx),
           resetTokens: new DrizzlePasswordResetTokenRepository(tx),
+          clients: new DrizzleClientRepository(tx),
+          products: new DrizzleProductRepository(tx),
+          clientProducts: new DrizzleClientProductRepository(tx),
         }),
       { behavior: 'immediate' },
     );

@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Client } from '../../src/domain/client/Client.js';
+import { Cuit } from '../../src/domain/client/Cuit.js';
+import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { Price } from '../../src/domain/product/Price.js';
+import { Product } from '../../src/domain/product/Product.js';
 import { Email } from '../../src/domain/shared/Email.js';
 import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js';
 import { Session } from '../../src/domain/auth/Session.js';
 import { User } from '../../src/domain/user/User.js';
+import { DrizzleClientProductRepository } from '../../src/infrastructure/db/DrizzleClientProductRepository.js';
+import { DrizzleClientRepository } from '../../src/infrastructure/db/DrizzleClientRepository.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
+import { DrizzleProductRepository } from '../../src/infrastructure/db/DrizzleProductRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
@@ -116,6 +124,50 @@ describe('DrizzleUnitOfWork', () => {
     expect(outside.findByTokenHash('a'.repeat(64))?.invalidatedAt).toBeNull();
     expect(outside.findByTokenHash('b'.repeat(64))).toBeNull();
     expect(outside.latestCreatedAtForUser('u-1')?.toISOString()).toBe(t0.toISOString());
+    expect(t.db.$client.inTransaction).toBe(false);
+  });
+
+  // FEAT-010: clientes, productos y asignaciones se revierten junto con los demás repositorios
+  it('test_uow_error_revierte_clientes_productos', () => {
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    const makeClient = (id: string, cuit: string, email: string) =>
+      Client.create({
+        id,
+        businessName: `Cliente ${id}`,
+        cuit: Cuit.parse(cuit),
+        address: 'Calle 1',
+        billingEmail: Email.create(email),
+        ivaCondition: IvaCondition.of(1),
+        createdAt: t0,
+      });
+    const makeProduct = (id: string, name: string) =>
+      Product.create({ id, name, price: Price.parse('100', 'ARS'), createdAt: t0 });
+    const outsideClients = new DrizzleClientRepository(t.db);
+    const outsideProducts = new DrizzleProductRepository(t.db);
+    const outsideAssignments = new DrizzleClientProductRepository(t.db);
+    outsideClients.insert(makeClient('c-1', '30711111111', 'c1@empresa.com'));
+    outsideProducts.insert(makeProduct('p-1', 'Turnos'));
+    outsideAssignments.assign('c-1', 'p-1', t0);
+    const uow = new DrizzleUnitOfWork(t.db);
+    const boom = new Error('boom');
+
+    expect(() =>
+      uow.run(({ clients, products, clientProducts }) => {
+        clients.update((clients.findById('c-1') as Client).deactivated());
+        clients.insert(makeClient('c-2', '20123456786', 'c2@empresa.com'));
+        products.update((products.findById('p-1') as Product).deactivated());
+        products.insert(makeProduct('p-2', 'Agenda'));
+        expect(clientProducts.unassign('c-1', 'p-1')).toBe(true);
+        clientProducts.assign('c-2', 'p-2', t0);
+        expect(clientProducts.listProductIdsOf('c-2')).toEqual(['p-2']);
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    expect(outsideClients.list().map((c) => [c.id, c.status])).toEqual([['c-1', 'activo']]);
+    expect(outsideProducts.list().map((p) => [p.id, p.status])).toEqual([['p-1', 'activo']]);
+    expect(outsideAssignments.listProductIdsOf('c-1')).toEqual(['p-1']);
+    expect(outsideAssignments.listProductIdsOf('c-2')).toEqual([]);
     expect(t.db.$client.inTransaction).toBe(false);
   });
 

@@ -8,6 +8,6 @@ export interface ClientProductRepository {
   /** Quita la asignación; `false` si no existía (FR-15). */
   unassign(clientId: string, productId: string): boolean;
   isAssigned(clientId: string, productId: string): boolean;
-  /** Ids de los productos asignados al cliente (FR-17). */
+  /** Ids de los productos asignados al cliente (FR-17), ordenados por id de producto. */
   listProductIdsOf(clientId: string): string[];
 }

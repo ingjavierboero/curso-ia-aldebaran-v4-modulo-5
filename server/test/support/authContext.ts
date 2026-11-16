@@ -37,7 +37,7 @@ export function createAuthContext() {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const resetTokens = new InMemoryPasswordResetTokenRepository();
-  const uow = new InMemoryUnitOfWork(users, sessions, resetTokens);
+  const uow = new InMemoryUnitOfWork({ users, sessions, resetTokens });
   const clock = new FakeClock();
   const hasher = new FakePasswordHasher();
   const tokens = new FakeSessionTokenGenerator();

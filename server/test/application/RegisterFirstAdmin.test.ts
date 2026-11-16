@@ -115,7 +115,7 @@ describe('RegisterFirstAdmin', () => {
       }),
     );
     const registerFirstAdmin = new RegisterFirstAdmin({
-      uow: new InMemoryUnitOfWork(users, new InMemorySessionRepository()),
+      uow: new InMemoryUnitOfWork({ users, sessions: new InMemorySessionRepository() }),
       hasher: new FakePasswordHasher(),
       ids: new SequentialIdGenerator(),
       clock: new FakeClock(),

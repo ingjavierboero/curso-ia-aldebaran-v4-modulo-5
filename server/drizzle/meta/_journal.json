@@ -22,6 +22,13 @@
       "when": 1794790493931,
       "tag": "0002_blushing_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794850335530,
+      "tag": "0003_fluffy_black_cat",
+      "breakpoints": true
     }
   ]
 }
