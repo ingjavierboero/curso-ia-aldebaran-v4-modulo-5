@@ -1,10 +1,27 @@
-import { createBrowserRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router';
-import { getSession, getSetupStatus, setUnauthorizedHandler } from './api/authApi';
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  redirect,
+  type LoaderFunctionArgs,
+  type RouteObject,
+} from 'react-router';
+import {
+  ApiError,
+  INVALID_RESET_LINK_MESSAGE,
+  checkResetToken,
+  errorText,
+  getSession,
+  getSetupStatus,
+  setUnauthorizedHandler,
+} from './api/authApi';
 import type { PublicUser } from './api/types';
 import { FirstAdminPage } from './pages/FirstAdminPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import type { ResetTokenCheck } from './routes/resetTokenCheck';
 import { UsersPage } from './pages/UsersPage';
 import { useAuthStore } from './store/authStore';
 
@@ -68,12 +85,38 @@ async function setupLoader() {
   }
 }
 
+/**
+ * `/recuperar/:token` (FEAT-008): valida el enlace una sola vez por navegación, acá y no en un efecto
+ * (StrictMode duplica los efectos y cada chequeo cuenta para el límite del server). No pide sesión.
+ * Un 429 es un bloqueo con el mensaje del server; otro 4xx, un enlace que no sirve; sin servidor, el
+ * enlace no se puede usar y se informa como bloqueado con el texto de error de red.
+ */
+async function resetTokenLoader({ params }: LoaderFunctionArgs): Promise<ResetTokenCheck> {
+  try {
+    await checkResetToken(params.token ?? '');
+    return { status: 'valid' };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 429) return { status: 'blocked', message: err.message };
+    if (err instanceof ApiError) return { status: 'invalid', message: INVALID_RESET_LINK_MESSAGE };
+    return { status: 'blocked', message: errorText(err) };
+  }
+}
+
 export const routes: RouteObject[] = [
   { path: '/', loader: sessionLoader, Component: HomePage },
   { path: '/perfil', loader: sessionLoader, Component: ProfilePage },
   { path: '/usuarios', loader: usersLoader, Component: UsersPage },
   { path: '/login', loader: loginLoader, Component: LoginPage },
   { path: '/setup', loader: setupLoader, Component: FirstAdminPage },
+  { path: '/recuperar', Component: ForgotPasswordPage },
+  // Solo se revalida si cambia el enlace: un segundo chequeo del mismo contaría para el límite sin
+  // aportar nada; uno distinto sí hay que validarlo.
+  {
+    path: '/recuperar/:token',
+    loader: resetTokenLoader,
+    shouldRevalidate: ({ currentParams, nextParams }) => currentParams.token !== nextParams.token,
+    Component: ResetPasswordPage,
+  },
   { path: '*', loader: () => redirect('/') },
 ];
 

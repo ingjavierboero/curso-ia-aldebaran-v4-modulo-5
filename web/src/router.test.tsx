@@ -85,4 +85,28 @@ describe('router', () => {
     expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument();
     expect(withSession.router.state.location.pathname).toBe('/perfil');
   });
+
+  // /recuperar y /recuperar/:token son públicas: no piden sesión ni el estado del setup (FEAT-008).
+  // El enlace se valida una sola vez, en el loader; un 401 inesperado no lleva al login.
+  it('las rutas de recuperación no piden sesión y validan el enlace una vez', async () => {
+    // Sin rutas declaradas: cualquier llamada (sesión, setup) queda como no simulada y falla el test.
+    mockFetch({});
+    const forgot = renderApp('/recuperar');
+    expect(await screen.findByRole('heading', { name: 'Recuperar la contraseña' })).toBeInTheDocument();
+    expect(forgot.router.state.location.pathname).toBe('/recuperar');
+    forgot.view.unmount();
+
+    const fetchMock = mockFetch({ 'POST /api/auth/password-reset/check': { status: 204 } });
+    const reset = renderApp('/recuperar/abc');
+    expect(await screen.findByRole('heading', { name: 'Definir una nueva contraseña' })).toBeInTheDocument();
+    expect(reset.router.state.location.pathname).toBe('/recuperar/abc');
+    expect(fetchMock.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /api/auth/password-reset/check']);
+    reset.view.unmount();
+
+    mockFetch({ 'POST /api/auth/password-reset/check': SESSION_401 });
+    const unauthorized = renderApp('/recuperar/abc');
+    expect(await screen.findByText('El enlace no es válido o venció')).toBeInTheDocument();
+    expect(unauthorized.router.state.location.pathname).toBe('/recuperar/abc');
+    expect(useAuthStore.getState().status).toBe('loading');
+  });
 });

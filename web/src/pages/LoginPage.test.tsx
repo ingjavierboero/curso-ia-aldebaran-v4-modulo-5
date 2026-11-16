@@ -188,4 +188,20 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Email')).toHaveValue('ana@aldebaran.test');
     expect(router.state.location.pathname).toBe('/login');
   });
+
+  // El login ofrece "Olvidé mi contraseña", que lleva a /recuperar sin pedir sesión (FEAT-008, AC-01).
+  it('test_login_page_enlace_olvide_mi_contraseña', async () => {
+    mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/auth/session': SESSION_401,
+    });
+    const { router, user } = renderApp('/login');
+
+    const link = await screen.findByRole('link', { name: 'Olvidé mi contraseña' });
+    expect(link).toHaveAttribute('href', '/recuperar');
+    await user.click(link);
+
+    await waitFor(() => { expect(router.state.location.pathname).toBe('/recuperar'); });
+    expect(await screen.findByRole('heading', { name: 'Recuperar la contraseña' })).toBeInTheDocument();
+  });
 });
