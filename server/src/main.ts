@@ -3,11 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { constants as osConstants } from 'node:os';
 import { AuthenticateSession } from './application/auth/AuthenticateSession.js';
 import { ChangeOwnPassword } from './application/auth/ChangeOwnPassword.js';
+import { CheckPasswordResetToken } from './application/auth/CheckPasswordResetToken.js';
 import { GetSetupStatus } from './application/auth/GetSetupStatus.js';
 import { Login } from './application/auth/Login.js';
 import { Logout } from './application/auth/Logout.js';
 import { PeekSession } from './application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from './application/auth/RegisterFirstAdmin.js';
+import { RequestPasswordReset } from './application/auth/RequestPasswordReset.js';
+import { ResetPasswordWithToken } from './application/auth/ResetPasswordWithToken.js';
 import { GetHealth } from './application/health/GetHealth.js';
 import { JobRegistry } from './application/health/JobRegistry.js';
 import { CreateUser } from './application/user/CreateUser.js';
@@ -21,15 +24,19 @@ import { UuidGenerator } from './infrastructure/auth/UuidGenerator.js';
 import { SystemClock } from './infrastructure/clock/SystemClock.js';
 import { createDb, resolveDatabasePath } from './infrastructure/db/client.js';
 import { DrizzleJobRunRepository } from './infrastructure/db/DrizzleJobRunRepository.js';
+import { DrizzlePasswordResetTokenRepository } from './infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from './infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from './infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from './infrastructure/db/DrizzleUserRepository.js';
 import { migrate } from './infrastructure/db/migrate.js';
 import { SqliteDatabaseProbe } from './infrastructure/db/SqliteDatabaseProbe.js';
+import { createEmailSender } from './infrastructure/email/createEmailSender.js';
+import { resolveAppUrlWithNotice } from './infrastructure/email/emailConfig.js';
 import { createApp } from './infrastructure/http/app.js';
 import { createJsonLogger } from './infrastructure/http/authLog.js';
 import { parsePort } from './infrastructure/http/parsePort.js';
 import { createHealthEventLog } from './infrastructure/logging/healthEventLog.js';
+import { createPasswordResetLog } from './infrastructure/logging/passwordResetLog.js';
 
 async function main(): Promise<void> {
   // Antes de crear cualquier Date (los imports de arriba no leen la zona horaria al evaluarse).
@@ -37,6 +44,12 @@ async function main(): Promise<void> {
   const logger = createJsonLogger();
   // Antes de abrir la base: un PORT inválido corta el arranque por `startup_failed` (código 1).
   const port = parsePort(process.env.PORT);
+  const clock = new SystemClock();
+  // FEAT-008 (ADR-007): igual que PORT, una APP_URL o un EMAIL_REDIRECT_TO inválidos lanzan
+  // `InvalidConfig` y cortan el arranque por `startup_failed` antes de abrir la base. Acá también se
+  // registran `app_url_default`, `email_unconfigured` y `email_redirect_active`.
+  const appUrl = resolveAppUrlWithNotice({ logger, clock });
+  const emailSender = createEmailSender({ logger, clock });
 
   const databasePath = resolveDatabasePath();
   const db = createDb(databasePath);
@@ -49,7 +62,6 @@ async function main(): Promise<void> {
   const hasher = new Argon2PasswordHasher();
   const tokens = new CryptoSessionTokenGenerator();
   const ids = new UuidGenerator();
-  const clock = new SystemClock();
   // R-02: hash de una contraseña aleatoria, contra el que se verifica cuando el email no existe.
   const dummyHash = await hasher.hash(randomUUID());
 
@@ -62,7 +74,30 @@ async function main(): Promise<void> {
   // Después de fijar TZ: el arranque desde el que se mide el atraso de un proceso sin corridas.
   const systemStartedAt = clock.now();
 
+  // FEAT-008: recuperación de contraseña. Instancia propia del generador para los tokens de
+  // recuperación (reuso deliberado de `SessionTokenGenerator`, spec FEAT-008).
+  const resetTokens = new DrizzlePasswordResetTokenRepository(db);
+  const resetTokenGenerator = new CryptoSessionTokenGenerator();
+  // Block 4 suma estos tres casos de uso a `AppDeps`; hasta entonces `createApp` los recibe por
+  // spread y no los usa.
+  const passwordReset = {
+    requestPasswordReset: new RequestPasswordReset({
+      users,
+      resetTokens,
+      uow,
+      resetTokenGenerator,
+      ids,
+      clock,
+      emailSender,
+      resetLog: createPasswordResetLog(logger, clock),
+      appUrl,
+    }),
+    checkPasswordResetToken: new CheckPasswordResetToken({ users, resetTokens, resetTokenGenerator, clock }),
+    resetPasswordWithToken: new ResetPasswordWithToken({ users, resetTokens, uow, hasher, resetTokenGenerator, clock }),
+  };
+
   const app = createApp({
+    ...passwordReset,
     login: new Login({ users, sessions, hasher, tokens, ids, clock, dummyHash }),
     logout: new Logout({ sessions, tokens }),
     changeOwnPassword: new ChangeOwnPassword({ users, uow, hasher, tokens }),
