@@ -9,6 +9,19 @@ import { PeekSession } from '../../src/application/auth/PeekSession.js';
 import { RegisterFirstAdmin } from '../../src/application/auth/RegisterFirstAdmin.js';
 import { RequestPasswordReset } from '../../src/application/auth/RequestPasswordReset.js';
 import { ResetPasswordWithToken } from '../../src/application/auth/ResetPasswordWithToken.js';
+import { AssignProducts } from '../../src/application/client/AssignProducts.js';
+import { CreateClient } from '../../src/application/client/CreateClient.js';
+import { DeactivateClient } from '../../src/application/client/DeactivateClient.js';
+import { GetClient } from '../../src/application/client/GetClient.js';
+import { ListClients } from '../../src/application/client/ListClients.js';
+import { ReactivateClient } from '../../src/application/client/ReactivateClient.js';
+import { UnassignProduct } from '../../src/application/client/UnassignProduct.js';
+import { UpdateClient } from '../../src/application/client/UpdateClient.js';
+import { CreateProduct } from '../../src/application/product/CreateProduct.js';
+import { DeactivateProduct } from '../../src/application/product/DeactivateProduct.js';
+import { ListProducts } from '../../src/application/product/ListProducts.js';
+import { ReactivateProduct } from '../../src/application/product/ReactivateProduct.js';
+import { UpdateProduct } from '../../src/application/product/UpdateProduct.js';
 import type { EmailSender } from '../../src/application/shared/EmailSender.js';
 import { GetHealth } from '../../src/application/health/GetHealth.js';
 import { JobRegistry } from '../../src/application/health/JobRegistry.js';
@@ -23,6 +36,9 @@ import { Argon2PasswordHasher } from '../../src/infrastructure/auth/Argon2Passwo
 import { CryptoSessionTokenGenerator } from '../../src/infrastructure/auth/CryptoSessionTokenGenerator.js';
 import { UuidGenerator } from '../../src/infrastructure/auth/UuidGenerator.js';
 import type { Db } from '../../src/infrastructure/db/client.js';
+import { DrizzleClientProductRepository } from '../../src/infrastructure/db/DrizzleClientProductRepository.js';
+import { DrizzleClientRepository } from '../../src/infrastructure/db/DrizzleClientRepository.js';
+import { DrizzleProductRepository } from '../../src/infrastructure/db/DrizzleProductRepository.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
@@ -106,6 +122,10 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}, options: T
   const probe = new FakeDatabaseProbe();
   const jobRuns = new InMemoryJobRunRepository();
   const jobRegistry = new JobRegistry();
+  // FEAT-010: lecturas de clientes y productos fuera de la Unit of Work, como `ListUsers`.
+  const clients = new DrizzleClientRepository(db);
+  const products = new DrizzleProductRepository(db);
+  const clientProducts = new DrizzleClientProductRepository(db);
 
   const logs: CapturedLog[] = [];
   const logger: Logger = {
@@ -157,6 +177,19 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}, options: T
     updateUser: new UpdateUser({ uow }),
     deactivateUser: new DeactivateUser({ uow }),
     reactivateUser: new ReactivateUser({ uow }),
+    listClients: new ListClients({ clients }),
+    getClient: new GetClient({ clients, products, clientProducts }),
+    createClient: new CreateClient({ uow, ids, clock }),
+    updateClient: new UpdateClient({ uow }),
+    deactivateClient: new DeactivateClient({ uow }),
+    reactivateClient: new ReactivateClient({ uow }),
+    assignProducts: new AssignProducts({ uow, clock }),
+    unassignProduct: new UnassignProduct({ uow }),
+    listProducts: new ListProducts({ products }),
+    createProduct: new CreateProduct({ uow, ids, clock }),
+    updateProduct: new UpdateProduct({ uow }),
+    deactivateProduct: new DeactivateProduct({ uow }),
+    reactivateProduct: new ReactivateProduct({ uow }),
     clock,
     logger,
     ...overrides,

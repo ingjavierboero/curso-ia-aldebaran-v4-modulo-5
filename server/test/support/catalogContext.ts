@@ -34,6 +34,24 @@ export const CUITS = {
   norte: '27222222228',
 } as const;
 
+const CUIT_WEIGHTS = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2] as const;
+
+/**
+ * `count` CUIT válidos y distintos, de prefijo 30, para sembrar volumen. Saltea las bases que no
+ * tienen dígito verificador (resto 10). Siempre los mismos, en el mismo orden.
+ */
+export function cuitsFor(count: number): string[] {
+  const result: string[] = [];
+  for (let n = 10_000_000; result.length < count; n++) {
+    const base = `30${String(n)}`;
+    const sum = CUIT_WEIGHTS.reduce((acc, weight, i) => acc + Number(base[i]) * weight, 0);
+    const dv = 11 - (sum % 11);
+    if (dv === 10) continue;
+    result.push(`${base}${String(dv === 11 ? 0 : dv)}`);
+  }
+  return result;
+}
+
 export interface SeedClientOptions {
   id?: string;
   businessName?: string;

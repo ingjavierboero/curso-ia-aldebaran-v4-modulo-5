@@ -10,7 +10,20 @@ import type { PeekSession } from '../../application/auth/PeekSession.js';
 import type { RegisterFirstAdmin } from '../../application/auth/RegisterFirstAdmin.js';
 import type { RequestPasswordReset } from '../../application/auth/RequestPasswordReset.js';
 import type { ResetPasswordWithToken } from '../../application/auth/ResetPasswordWithToken.js';
+import type { AssignProducts } from '../../application/client/AssignProducts.js';
+import type { CreateClient } from '../../application/client/CreateClient.js';
+import type { DeactivateClient } from '../../application/client/DeactivateClient.js';
+import type { GetClient } from '../../application/client/GetClient.js';
+import type { ListClients } from '../../application/client/ListClients.js';
+import type { ReactivateClient } from '../../application/client/ReactivateClient.js';
+import type { UnassignProduct } from '../../application/client/UnassignProduct.js';
+import type { UpdateClient } from '../../application/client/UpdateClient.js';
 import type { GetHealth } from '../../application/health/GetHealth.js';
+import type { CreateProduct } from '../../application/product/CreateProduct.js';
+import type { DeactivateProduct } from '../../application/product/DeactivateProduct.js';
+import type { ListProducts } from '../../application/product/ListProducts.js';
+import type { ReactivateProduct } from '../../application/product/ReactivateProduct.js';
+import type { UpdateProduct } from '../../application/product/UpdateProduct.js';
 import type { CreateUser } from '../../application/user/CreateUser.js';
 import type { DeactivateUser } from '../../application/user/DeactivateUser.js';
 import type { ListUsers } from '../../application/user/ListUsers.js';
@@ -24,8 +37,10 @@ import { AttemptTracker } from './rateLimit/AttemptTracker.js';
 import { bodyEmailOf, createAttemptGate } from './rateLimit/attemptGate.js';
 import { requireJson } from './requireJson.js';
 import { authRoutes } from './routes/auth.js';
+import { clientsRoutes } from './routes/clients.js';
 import { healthRoutes } from './routes/health.js';
 import { passwordResetRoutes } from './routes/passwordReset.js';
+import { productsRoutes } from './routes/products.js';
 import { setupRoutes } from './routes/setup.js';
 import { usersRoutes } from './routes/users.js';
 import { defaultSecureCookie } from './sessionCookie.js';
@@ -52,6 +67,21 @@ export interface AppDeps {
   requestPasswordReset: Pick<RequestPasswordReset, 'execute'>;
   checkPasswordResetToken: Pick<CheckPasswordResetToken, 'execute'>;
   resetPasswordWithToken: Pick<ResetPasswordWithToken, 'execute'>;
+  /** Clientes y asignaciones (FEAT-010): cada caso de uso autoriza al `Actor` que recibe. */
+  listClients: Pick<ListClients, 'execute'>;
+  getClient: Pick<GetClient, 'execute'>;
+  createClient: Pick<CreateClient, 'execute'>;
+  updateClient: Pick<UpdateClient, 'execute'>;
+  deactivateClient: Pick<DeactivateClient, 'execute'>;
+  reactivateClient: Pick<ReactivateClient, 'execute'>;
+  assignProducts: Pick<AssignProducts, 'execute'>;
+  unassignProduct: Pick<UnassignProduct, 'execute'>;
+  /** Productos (FEAT-010). */
+  listProducts: Pick<ListProducts, 'execute'>;
+  createProduct: Pick<CreateProduct, 'execute'>;
+  updateProduct: Pick<UpdateProduct, 'execute'>;
+  deactivateProduct: Pick<DeactivateProduct, 'execute'>;
+  reactivateProduct: Pick<ReactivateProduct, 'execute'>;
   clock: Clock;
   logger: Logger;
   /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
@@ -143,6 +173,8 @@ export function createApp(deps: AppDeps): Express {
     setupRoutes({ ...deps, firstAdminGate, firstAdminTracker }),
     healthRoutes(deps),
     usersRoutes(deps),
+    clientsRoutes(deps),
+    productsRoutes(deps),
   );
 
   app.use((_req: Request, res: Response) => {

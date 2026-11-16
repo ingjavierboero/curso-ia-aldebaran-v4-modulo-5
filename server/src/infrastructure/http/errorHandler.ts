@@ -7,8 +7,24 @@ import {
   InvalidResetToken,
   Unauthenticated,
 } from '../../application/auth/errors.js';
+import { ClientNotFound, ProductNotAssigned } from '../../application/client/errors.js';
+import { ProductInactive, ProductNotFound } from '../../application/product/errors.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { Forbidden } from '../../domain/auth/errors.js';
+import {
+  DuplicateBillingEmail,
+  DuplicateCuit,
+  InvalidClientData,
+  InvalidCuit,
+  InvalidIvaCondition,
+  ProductAlreadyAssigned,
+} from '../../domain/client/errors.js';
+import {
+  DuplicateProductName,
+  InvalidCurrency,
+  InvalidPrice,
+  InvalidProductData,
+} from '../../domain/product/errors.js';
 import { InvalidEmail } from '../../domain/shared/errors.js';
 import {
   EmailAlreadyInUse,
@@ -82,7 +98,14 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       // 400 y no 401: la web toma cualquier 401 como sesión perdida y navega al login (FEAT-007).
       err instanceof IncorrectCurrentPassword ||
       // FEAT-008: enlace de recuperación inexistente, vencido, usado o anulado; mismo mensaje para todos.
-      err instanceof InvalidResetToken
+      err instanceof InvalidResetToken ||
+      // FEAT-010: datos de clientes y productos que el dominio rechaza.
+      err instanceof InvalidCuit ||
+      err instanceof InvalidIvaCondition ||
+      err instanceof InvalidClientData ||
+      err instanceof InvalidPrice ||
+      err instanceof InvalidCurrency ||
+      err instanceof InvalidProductData
     ) {
       res.status(400).json({ error: err.message });
       return;
@@ -108,11 +131,26 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       res.status(403).json({ error: err.message });
       return;
     }
-    if (err instanceof UserNotFound) {
+    if (
+      err instanceof UserNotFound ||
+      err instanceof ClientNotFound ||
+      err instanceof ProductNotFound ||
+      err instanceof ProductNotAssigned
+    ) {
       res.status(404).json({ error: err.message });
       return;
     }
-    if (err instanceof FirstAdminAlreadyExists || err instanceof EmailAlreadyInUse || err instanceof LastActiveAdmin) {
+    if (
+      err instanceof FirstAdminAlreadyExists ||
+      err instanceof EmailAlreadyInUse ||
+      err instanceof LastActiveAdmin ||
+      // FEAT-010: unicidad (NFR-01) y reglas de asignación (FR-13, FR-14).
+      err instanceof DuplicateCuit ||
+      err instanceof DuplicateBillingEmail ||
+      err instanceof DuplicateProductName ||
+      err instanceof ProductAlreadyAssigned ||
+      err instanceof ProductInactive
+    ) {
       res.status(409).json({ error: err.message });
       return;
     }
