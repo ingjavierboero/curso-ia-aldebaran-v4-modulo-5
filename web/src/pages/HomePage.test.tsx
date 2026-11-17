@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { useAuthStore } from '../store/authStore';
 import { ANA, CARLOS, EVA, HEALTH_OK, SESSION_401, deferred, mockFetch } from '../test/fetchMock';
 import { renderApp } from '../test/renderApp';
+import { EMPTY_SETTINGS } from '../test/settingsFixtures';
 
 describe('HomePage', () => {
   // La pantalla principal muestra el banner de salud cuando el sistema está degradado (FR-07)
@@ -73,6 +74,24 @@ describe('HomePage', () => {
       await user.click(screen.getByRole('button', { name: 'Productos' }));
       await waitFor(() => { expect(router.state.location.pathname).toBe('/productos'); });
       expect(await screen.findByText('Productos', { selector: 'h3' })).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+  // La configuración de facturación se ofrece a los tres perfiles (FEAT-011, FR-01).
+  it('el acceso a configuración se muestra a los tres perfiles', async () => {
+    for (const visitor of [ANA, EVA, { ...CARLOS, status: 'activo' as const }]) {
+      mockFetch({
+        'GET /api/auth/session': { status: 200, body: { user: visitor } },
+        'GET /api/health': HEALTH_OK,
+        'GET /api/settings/billing': { status: 200, body: EMPTY_SETTINGS },
+      });
+      const { router, user, view } = renderApp('/');
+      expect(await screen.findByRole('heading', { name: `Hola, ${visitor.name}` })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Configuración' }));
+      await waitFor(() => { expect(router.state.location.pathname).toBe('/configuracion'); });
+      expect(await screen.findByText('Configuración', { selector: 'h3' })).toBeInTheDocument();
       view.unmount();
     }
   });

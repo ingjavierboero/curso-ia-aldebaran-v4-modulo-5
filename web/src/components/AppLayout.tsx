@@ -27,10 +27,10 @@ function readLayoutNotice(state: unknown): LayoutNotice | null {
 }
 
 /**
- * Marco de las pantallas con sesión: header (marca, nombre, "Clientes", "Productos" y "Mi perfil"
- * para todos los perfiles,
- * acceso a usuarios solo para Admin y "Cerrar sesión") y el banner de salud. El botón "Usuarios"
- * es UX: la autorización real es la del server (FEAT-006, FR-13).
+ * Marco de las pantallas con sesión: header (marca, nombre, "Clientes", "Productos", "Configuración"
+ * y "Mi perfil" para todos los perfiles, acceso a usuarios solo para Admin y "Cerrar sesión") y el
+ * banner de salud. Los botones son UX: la autorización real es la del server (FEAT-006, FR-13;
+ * FEAT-011: la configuración la ven los tres perfiles y solo el Admin la cambia).
  */
 export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -110,6 +110,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
             }}
           >
             Productos
+          </Button>
+          <Button
+            onClick={() => {
+              void navigate('/configuracion');
+            }}
+          >
+            Configuración
           </Button>
           <Button
             onClick={() => {
