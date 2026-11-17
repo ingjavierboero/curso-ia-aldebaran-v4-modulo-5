@@ -9,5 +9,5 @@
     "types": ["node"],
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "include": ["src", "test", "vitest.config.ts", "drizzle.config.ts"]
+  "include": ["src", "test", "vitest.unit.config.ts", "vitest.integration.config.ts", "drizzle.config.ts"]
 }

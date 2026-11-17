@@ -51,6 +51,6 @@
     "**/node_modules/**",
     ".daw/**",
     "/vitest.config.ts",
-    "server/test/tooling/fixtures/**"
+    "server/test/unit/tooling/fixtures/**"
   ]
 }
