@@ -6,7 +6,7 @@
 | PRD | docs/daw/prd/prd-FEAT-016.md |
 | Tier | FEATURE |
 | Date | 2026-11-17 |
-| Spec loops | 0 |
+| Spec loops | 1 |
 | Loops since last human decision | 0 |
 
 ## Summary
@@ -45,8 +45,8 @@ None — Block 1 stands alone.
 - `normalizeOperationNumber(raw)`: deja solo `[a-z0-9]` ASCII en minúsculas, conserva los ceros a la izquierda; vacío tras normalizar → `null` (FR-02).
 - `evaluateReceipt(receipt, imputedForClient)` (FR-01, FR-03, FR-04, FR-05, FR-08):
   1. CUIT vacío o monto que no es un entero seguro mayor que 0 → `datos_no_extraidos`, sin comparar.
-  2. Con fecha y número de operación: un imputado igual en CUIT, monto, fecha y número normalizado → `duplicado`; si no → `nuevo`.
-  3. Sin número de operación o sin fecha (D-08): un imputado igual en CUIT, monto y el dato restante → `posible_duplicado`; si no → `nuevo`.
+  2. Un imputado coincide si es igual en CUIT y monto, y en la fecha y el número normalizado cuando los tienen los dos (un dato que falta en cualquiera de los dos no se compara). Sin coincidencia → `nuevo`.
+  3. Con coincidencia: si el comprobante y el imputado tienen los dos fecha y número de operación → `duplicado`; si a alguno le falta uno de esos datos o ambos → `posible_duplicado` (D-08, D-10, D-11).
   - JSDoc de `imputedForClient`: comprobantes ya imputados del mismo cliente, sin límite de tiempo (S-01); imputado = llevó facturas a Pago recibido o Pagada (S-03).
 - `evaluateEmailReceipts(receipts, imputedForClient)`: una decisión por comprobante, en orden (FR-06); cada comprobante se compara también contra los anteriores del mismo email que resultaron `nuevo` (FR-07, D-09).
 
@@ -66,7 +66,7 @@ None — Block 1 stands alone.
 - [ ] test_pago_reenviado_identico_es_duplicado — validates AC-01, AC-05
 - [ ] test_numero_de_operacion_con_otro_formato_es_duplicado — validates AC-02, AC-03
 - [ ] test_pago_con_otra_fecha_u_operacion_es_nuevo — validates AC-04, AC-07
-- [ ] test_datos_faltantes_o_monto_invalido_rechazado — validates AC-06, AC-09 (sad path: monto inválido o CUIT faltante rechazado como datos no extraídos)
+- [ ] test_datos_faltantes_o_monto_invalido_rechazado — validates AC-06, AC-09, AC-11, AC-12 (sad path: monto inválido o CUIT faltante rechazado como datos no extraídos)
 - [ ] test_email_con_varios_comprobantes_y_determinismo — validates AC-08, AC-10
 
 **Completion criterion**
