@@ -4,7 +4,7 @@
 |---|---|
 | Module | server/src/domain/payment/DuplicatePaymentPolicy.ts |
 | Line coverage | 100% |
-| Branch coverage | 94.87% |
+| Branch coverage | 100% |
 | Function coverage | 100% |
 | Coverage floor | 80% (method default — .daw/rules/testing.instructions.md) |
 | Lint | `npm run lint` (`oxlint --type-aware`) — clean; `npm run typecheck` (`tsc -b`) — clean |
@@ -31,8 +31,10 @@ Suite completa 719/719. Tests en `server/test/domain/DuplicatePaymentPolicy.test
 ## Tests
 - ✅ Sad-path tests: `test_datos_faltantes_o_monto_invalido_rechazado` cubre monto inválido y CUIT faltante (datos no extraídos)
 - ⚠️ W-VER-03: el umbral de 50 ms de AC-10 depende de la máquina; se mantiene porque lo fija NFR-02 (docs/daw/specs/decisions-FEAT-016.md)
-- ⚠️ W-1 (verificación independiente): sin test propio para un imputado con datos inválidos que se descarta del pool (DuplicatePaymentPolicy.ts:92) ni para un comprobante inválido dentro de `evaluateEmailReceipts` (:122)
-- ⚠️ W-2 (verificación independiente): sin test propio para que un duplicado exacto gane sobre una coincidencia parcial (:83)
-- ⚠️ W-3 (verificación independiente): evidencia TDD parcial: los 5 tests se vieron en rojo antes de implementar, pero por "Cannot find module" (sin aserción ejecutada); solo AC-11 se vio fallar por aserción
+- ✅ W-1 cerrado en la ronda 2 (8b19e5a): `test_datos_faltantes_o_monto_invalido_rechazado` cubre el imputado inválido (DuplicatePaymentPolicy.ts:92) y `test_email_con_varios_comprobantes_y_determinismo` el comprobante inválido dentro del email (:122)
+- ✅ W-2 cerrado en la ronda 2 (8b19e5a): `test_pago_reenviado_identico_es_duplicado` comprueba que el duplicado exacto gana sobre la coincidencia parcial y que `matched` es el completo (:83)
+- ⚠️ W-3: evidencia TDD de la ronda 1 parcial (los 5 tests en rojo por "Cannot find module"; AC-11 por aserción). En la ronda 2, cada caso nuevo se vio en rojo con una mutación del código, que se restauró sin diff
+
+Ronda 1 (b268c9a): PASSED con W-1 a W-3; el usuario eligió volver a CODE para agregar los tests.
 
 Result: PASSED
