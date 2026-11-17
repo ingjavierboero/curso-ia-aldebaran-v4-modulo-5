@@ -55,6 +55,19 @@ export function optionalInteger(body: Record<string, unknown>, field: string): n
   return value;
 }
 
+/**
+ * Campo objeto opcional: ausente → `undefined`; presente, debe ser un objeto JSON plano (`null` y
+ * los arrays son inválidos); si no, `InvalidBody` nombrando el campo. Sus campos los valida quien llama.
+ */
+export function optionalObject(body: Record<string, unknown>, field: string): Record<string, unknown> | undefined {
+  if (!Object.hasOwn(body, field) || body[field] === undefined) return undefined;
+  const value = body[field];
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new InvalidBody(`El campo "${field}" debe ser un objeto`);
+  }
+  return value as Record<string, unknown>;
+}
+
 export interface StringArrayLimits {
   /** Cantidad máxima de elementos (el mínimo es 1). */
   maxItems: number;

@@ -24,6 +24,14 @@ import {
   InvalidPrice,
   InvalidProductData,
 } from '../../domain/product/errors.js';
+import {
+  InvalidActivityStartDate,
+  InvalidBillingHour,
+  InvalidIibb,
+  InvalidIssuerIvaCondition,
+  InvalidIssuerText,
+  InvalidPointOfSale,
+} from '../../domain/settings/errors.js';
 import { InvalidEmail, InvalidIvaCondition } from '../../domain/shared/errors.js';
 import {
   EmailAlreadyInUse,
@@ -104,7 +112,14 @@ export function createErrorHandler(deps: ErrorHandlerDeps): ErrorRequestHandler 
       err instanceof InvalidClientData ||
       err instanceof InvalidPrice ||
       err instanceof InvalidCurrency ||
-      err instanceof InvalidProductData
+      err instanceof InvalidProductData ||
+      // FEAT-011: valores de la configuración de facturación que el dominio rechaza.
+      err instanceof InvalidBillingHour ||
+      err instanceof InvalidPointOfSale ||
+      err instanceof InvalidIssuerIvaCondition ||
+      err instanceof InvalidActivityStartDate ||
+      err instanceof InvalidIibb ||
+      err instanceof InvalidIssuerText
     ) {
       res.status(400).json({ error: err.message });
       return;
