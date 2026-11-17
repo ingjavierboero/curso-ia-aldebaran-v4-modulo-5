@@ -15,6 +15,8 @@ se las envía por email y valida con un LLM los comprobantes de pago que respond
 - Tests: Vitest.
 - Install: npm ci
 - Test: npm test
+- Test unit: npm run test:unit
+- Test integration: npm run test:integration
 - Typecheck: npm run typecheck
 - Lint: npm run lint
 - Audit: npm audit --omit=dev
