@@ -13,7 +13,7 @@ import { ReactivateProduct } from '../../src/application/product/ReactivateProdu
 import { UpdateProduct } from '../../src/application/product/UpdateProduct.js';
 import { Client, type ClientStatus } from '../../src/domain/client/Client.js';
 import { Cuit } from '../../src/domain/client/Cuit.js';
-import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 import { Price } from '../../src/domain/product/Price.js';
 import { Product, type ProductStatus } from '../../src/domain/product/Product.js';
 import { Email } from '../../src/domain/shared/Email.js';

@@ -92,6 +92,53 @@ export interface CreateProductInput {
 /** Body de `PATCH /api/products/:id`: al menos uno de los campos. */
 export type UpdateProductInput = Partial<CreateProductInput>;
 
+/** Dato obligatorio de la configuración de facturación, como lo nombra el server (FR-10, W4). */
+export type RequiredBillingSetting =
+  | 'issuerLegalName'
+  | 'issuerAddress'
+  | 'issuerIvaCondition'
+  | 'issuerIibb'
+  | 'issuerActivityStartDate'
+  | 'pointOfSale';
+
+/**
+ * Lo que el server devuelve de la configuración de facturación (`GET` y `PATCH /api/settings/billing`,
+ * FEAT-011), sin envoltorio. Un dato no cargado llega como `null`; la fecha de inicio, como `YYYY-MM-DD`.
+ */
+export interface BillingSettings {
+  billingHour: string;
+  pointOfSale: number | null;
+  issuer: {
+    legalName: string | null;
+    address: string | null;
+    ivaCondition: IvaCondition | null;
+    iibb: string | null;
+    activityStartDate: string | null;
+    tradeName: string | null;
+  };
+  /** Obligatorios vacíos, en el orden del server, con el nombre con que se muestran (FR-11). */
+  missing: { field: RequiredBillingSetting; label: string }[];
+  /** Fecha del último guardado; la pantalla no la muestra. */
+  updatedAt: string | null;
+}
+
+/**
+ * Body de `PATCH /api/settings/billing`: solo los campos cambiados, al menos uno. No hay forma de
+ * vaciar un dato ya guardado, así que ningún campo admite `null`.
+ */
+export interface UpdateBillingSettingsInput {
+  billingHour?: string;
+  pointOfSale?: number;
+  issuer?: {
+    legalName?: string;
+    address?: string;
+    ivaCondition?: number;
+    iibb?: string;
+    activityStartDate?: string;
+    tradeName?: string;
+  };
+}
+
 /** Estado de un proceso automático, tal como lo informa `GET /api/health` a un usuario con sesión. */
 export interface HealthJob {
   name: string;

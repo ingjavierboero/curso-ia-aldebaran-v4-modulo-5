@@ -3,7 +3,7 @@ import { Client } from '../../domain/client/Client.js';
 import type { ClientRepository } from '../../domain/client/ClientRepository.js';
 import { Cuit } from '../../domain/client/Cuit.js';
 import { DuplicateBillingEmail, DuplicateCuit } from '../../domain/client/errors.js';
-import { IvaCondition } from '../../domain/client/IvaCondition.js';
+import { IvaCondition } from '../../domain/shared/IvaCondition.js';
 import { Email } from '../../domain/shared/Email.js';
 import type { SqliteHandle } from './handle.js';
 import { parseIsoDate } from './parseIsoDate.js';

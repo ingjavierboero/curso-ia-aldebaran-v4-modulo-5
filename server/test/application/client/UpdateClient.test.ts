@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DuplicateBillingEmail, DuplicateCuit, InvalidIvaCondition } from '../../../src/domain/client/errors.js';
+import { DuplicateBillingEmail, DuplicateCuit } from '../../../src/domain/client/errors.js';
+import { InvalidIvaCondition } from '../../../src/domain/shared/errors.js';
 import { CUITS, createCatalogContext } from '../../support/catalogContext.js';
 
 describe('UpdateClient', () => {

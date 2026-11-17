@@ -6,3 +6,12 @@ export class InvalidEmail extends Error {
     super(message);
   }
 }
+
+/** Condición frente al IVA fuera de los códigos admitidos para una Factura C (FR-04 de FEAT-010). */
+export class InvalidIvaCondition extends Error {
+  override readonly name = 'InvalidIvaCondition';
+
+  constructor(message = 'La condición frente al IVA no es válida') {
+    super(message);
+  }
+}

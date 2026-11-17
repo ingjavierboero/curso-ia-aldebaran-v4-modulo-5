@@ -1,5 +1,5 @@
 import type { Client, ClientStatus } from '../../../domain/client/Client.js';
-import type { IvaConditionCode } from '../../../domain/client/IvaCondition.js';
+import type { IvaConditionCode } from '../../../domain/shared/IvaCondition.js';
 
 /** Lo que los casos de uso devuelven de un cliente: valores planos y la fecha de alta en ISO. */
 export interface PublicClient {

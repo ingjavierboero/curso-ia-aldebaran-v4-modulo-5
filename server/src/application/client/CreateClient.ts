@@ -1,7 +1,7 @@
 import { assertCan } from '../../domain/auth/Authorization.js';
 import { Client, type ClientData, parseAddress, parseBusinessName } from '../../domain/client/Client.js';
 import { Cuit } from '../../domain/client/Cuit.js';
-import { IvaCondition } from '../../domain/client/IvaCondition.js';
+import { IvaCondition } from '../../domain/shared/IvaCondition.js';
 import type { Clock } from '../../domain/shared/Clock.js';
 import { Email } from '../../domain/shared/Email.js';
 import type { Actor } from '../shared/Actor.js';

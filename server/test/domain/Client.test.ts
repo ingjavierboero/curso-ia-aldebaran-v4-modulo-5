@@ -7,7 +7,7 @@ import {
   InvalidClientData,
   ProductAlreadyAssigned,
 } from '../../src/domain/client/errors.js';
-import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 import { Email } from '../../src/domain/shared/Email.js';
 
 function validData() {

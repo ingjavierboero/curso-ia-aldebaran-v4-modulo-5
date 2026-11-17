@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import { LOS_ANDES } from './test/catalogFixtures';
 import { ANA, CARLOS, EVA, HEALTH_OK, SESSION_401, mockFetch } from './test/fetchMock';
 import { renderApp } from './test/renderApp';
+import { EMPTY_SETTINGS } from './test/settingsFixtures';
 
 describe('router', () => {
   // / sin sesión es rechazado y redirige a /login
@@ -123,6 +124,35 @@ describe('router', () => {
         expect(router.state.location.pathname, `${visitor.role} ${path}`).toBe(path);
         view.unmount();
       }
+    }
+  });
+
+  // /configuracion exige sesión (sin sesión, a /login sin pedir la configuración); los tres perfiles entran (FEAT-011).
+  it('test_web_ruta_configuracion_sin_sesion_no_autorizado', async () => {
+    const fetchMock = mockFetch({
+      'GET /api/setup/status': { status: 200, body: { needsFirstAdmin: false } },
+      'GET /api/auth/session': SESSION_401,
+    });
+    const anon = renderApp('/configuracion');
+
+    await waitFor(() => { expect(anon.router.state.location.pathname).toBe('/login'); });
+    expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(screen.queryByText('Configuración', { selector: 'h3' })).not.toBeInTheDocument();
+    expect(useAuthStore.getState().status).toBe('anon');
+    expect(fetchMock.calls.filter((c) => c.path.startsWith('/api/settings'))).toHaveLength(0);
+    anon.view.unmount();
+
+    for (const visitor of [ANA, EVA, { ...CARLOS, status: 'activo' as const }]) {
+      mockFetch({
+        'GET /api/auth/session': { status: 200, body: { user: visitor } },
+        'GET /api/health': HEALTH_OK,
+        'GET /api/settings/billing': { status: 200, body: EMPTY_SETTINGS },
+      });
+      const { router, view } = renderApp('/configuracion');
+      expect(await screen.findByText('Configuración', { selector: 'h3' })).toBeInTheDocument();
+      expect(await screen.findByLabelText('Hora de facturación')).toHaveValue('11:00');
+      expect(router.state.location.pathname, visitor.role).toBe('/configuracion');
+      view.unmount();
     }
   });
 

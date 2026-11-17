@@ -26,6 +26,8 @@ import { DeactivateProduct } from './application/product/DeactivateProduct.js';
 import { ListProducts } from './application/product/ListProducts.js';
 import { ReactivateProduct } from './application/product/ReactivateProduct.js';
 import { UpdateProduct } from './application/product/UpdateProduct.js';
+import { GetBillingSettings } from './application/settings/GetBillingSettings.js';
+import { UpdateBillingSettings } from './application/settings/UpdateBillingSettings.js';
 import { CreateUser } from './application/user/CreateUser.js';
 import { DeactivateUser } from './application/user/DeactivateUser.js';
 import { ListUsers } from './application/user/ListUsers.js';
@@ -42,6 +44,7 @@ import { DrizzleProductRepository } from './infrastructure/db/DrizzleProductRepo
 import { DrizzleJobRunRepository } from './infrastructure/db/DrizzleJobRunRepository.js';
 import { DrizzlePasswordResetTokenRepository } from './infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from './infrastructure/db/DrizzleSessionRepository.js';
+import { DrizzleSettingsRepository } from './infrastructure/db/DrizzleSettingsRepository.js';
 import { DrizzleUnitOfWork } from './infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from './infrastructure/db/DrizzleUserRepository.js';
 import { migrate } from './infrastructure/db/migrate.js';
@@ -119,6 +122,8 @@ async function main(): Promise<void> {
   const clients = new DrizzleClientRepository(db);
   const products = new DrizzleProductRepository(db);
   const clientProducts = new DrizzleClientProductRepository(db);
+  // FEAT-011: lectura de la configuración fuera de la Unit of Work; los cambios van por `uow`.
+  const settings = new DrizzleSettingsRepository(db);
 
   const app = createApp({
     requestPasswordReset,
@@ -157,6 +162,8 @@ async function main(): Promise<void> {
     updateProduct: new UpdateProduct({ uow }),
     deactivateProduct: new DeactivateProduct({ uow }),
     reactivateProduct: new ReactivateProduct({ uow }),
+    getBillingSettings: new GetBillingSettings({ users, settings }),
+    updateBillingSettings: new UpdateBillingSettings({ uow, clock }),
     clock,
     logger,
   });

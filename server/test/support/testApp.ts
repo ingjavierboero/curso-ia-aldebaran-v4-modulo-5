@@ -25,6 +25,8 @@ import { UpdateProduct } from '../../src/application/product/UpdateProduct.js';
 import type { EmailSender } from '../../src/application/shared/EmailSender.js';
 import { GetHealth } from '../../src/application/health/GetHealth.js';
 import { JobRegistry } from '../../src/application/health/JobRegistry.js';
+import { GetBillingSettings } from '../../src/application/settings/GetBillingSettings.js';
+import { UpdateBillingSettings } from '../../src/application/settings/UpdateBillingSettings.js';
 import { CreateUser } from '../../src/application/user/CreateUser.js';
 import { DeactivateUser } from '../../src/application/user/DeactivateUser.js';
 import { ListUsers } from '../../src/application/user/ListUsers.js';
@@ -41,6 +43,7 @@ import { DrizzleClientRepository } from '../../src/infrastructure/db/DrizzleClie
 import { DrizzleProductRepository } from '../../src/infrastructure/db/DrizzleProductRepository.js';
 import { DrizzlePasswordResetTokenRepository } from '../../src/infrastructure/db/DrizzlePasswordResetTokenRepository.js';
 import { DrizzleSessionRepository } from '../../src/infrastructure/db/DrizzleSessionRepository.js';
+import { DrizzleSettingsRepository } from '../../src/infrastructure/db/DrizzleSettingsRepository.js';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/db/DrizzleUnitOfWork.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/db/DrizzleUserRepository.js';
 import { type AppDeps, createApp } from '../../src/infrastructure/http/app.js';
@@ -126,6 +129,8 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}, options: T
   const clients = new DrizzleClientRepository(db);
   const products = new DrizzleProductRepository(db);
   const clientProducts = new DrizzleClientProductRepository(db);
+  // FEAT-011: lectura de la configuración fuera de la Unit of Work, como en `main.ts`.
+  const settings = new DrizzleSettingsRepository(db);
 
   const logs: CapturedLog[] = [];
   const logger: Logger = {
@@ -190,6 +195,8 @@ export async function createTestApp(overrides: Partial<AppDeps> = {}, options: T
     updateProduct: new UpdateProduct({ uow }),
     deactivateProduct: new DeactivateProduct({ uow }),
     reactivateProduct: new ReactivateProduct({ uow }),
+    getBillingSettings: new GetBillingSettings({ users, settings }),
+    updateBillingSettings: new UpdateBillingSettings({ uow, clock }),
     clock,
     logger,
     ...overrides,

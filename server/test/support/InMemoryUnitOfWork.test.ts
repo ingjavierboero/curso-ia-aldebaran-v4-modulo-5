@@ -3,16 +3,20 @@ import { PasswordResetToken } from '../../src/domain/auth/PasswordResetToken.js'
 import { Session } from '../../src/domain/auth/Session.js';
 import { Client } from '../../src/domain/client/Client.js';
 import { Cuit } from '../../src/domain/client/Cuit.js';
-import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 import { Price } from '../../src/domain/product/Price.js';
 import { Product } from '../../src/domain/product/Product.js';
 import { Email } from '../../src/domain/shared/Email.js';
+import { BillingHour } from '../../src/domain/settings/BillingHour.js';
+import { BillingSettings } from '../../src/domain/settings/BillingSettings.js';
+import { PointOfSale } from '../../src/domain/settings/PointOfSale.js';
 import { User } from '../../src/domain/user/User.js';
 import { InMemoryClientProductRepository } from './InMemoryClientProductRepository.js';
 import { InMemoryClientRepository } from './InMemoryClientRepository.js';
 import { InMemoryPasswordResetTokenRepository } from './InMemoryPasswordResetTokenRepository.js';
 import { InMemoryProductRepository } from './InMemoryProductRepository.js';
 import { InMemorySessionRepository } from './InMemorySessionRepository.js';
+import { InMemorySettingsRepository } from './InMemorySettingsRepository.js';
 import { InMemoryUnitOfWork } from './InMemoryUnitOfWork.js';
 import { InMemoryUserRepository } from './InMemoryUserRepository.js';
 
@@ -131,14 +135,15 @@ describe('InMemoryUnitOfWork', () => {
   it('sin los repositorios opcionales usa repositorios propios vacíos', () => {
     const { uow } = setup();
 
-    const seen = uow.run(({ resetTokens, clients, products, clientProducts }) => ({
+    const seen = uow.run(({ resetTokens, clients, products, clientProducts, settings }) => ({
       latest: resetTokens.latestCreatedAtForUser('u-1'),
       clients: clients.list(),
       products: products.list(),
       assigned: clientProducts.listProductIdsOf('c-1'),
+      billingHour: settings.get().billingHour.value,
     }));
 
-    expect(seen).toEqual({ latest: null, clients: [], products: [], assigned: [] });
+    expect(seen).toEqual({ latest: null, clients: [], products: [], assigned: [], billingHour: '11:00' });
   });
 
   // FEAT-010: un error dentro de run deja clientes, productos y asignaciones como estaban
@@ -186,6 +191,51 @@ describe('InMemoryUnitOfWork', () => {
     expect(products.list().map((p) => [p.id, p.status])).toEqual([['p-1', 'activo']]);
     expect(clientProducts.listProductIdsOf('c-1')).toEqual(['p-1']);
     expect(clientProducts.listProductIdsOf('c-2')).toEqual([]);
+  });
+
+  // FEAT-011: un error dentro de run deja la configuración como estaba
+  it('test_uow_error_revierte_settings', () => {
+    const users = new InMemoryUserRepository();
+    const sessions = new InMemorySessionRepository();
+    const settings = new InMemorySettingsRepository();
+    const uow = new InMemoryUnitOfWork({ users, sessions, settings });
+    const t0 = new Date('2026-11-16T12:00:00.000Z');
+    const later = new Date('2026-11-16T13:00:00.000Z');
+    settings.saveBilling(
+      BillingSettings.defaults().withChanges({ billingHour: BillingHour.parse('09:00'), pointOfSale: PointOfSale.of(3) }),
+      t0,
+    );
+    const boom = new Error('boom');
+
+    expect(() =>
+      uow.run(({ settings: tx }) => {
+        expect(tx).toBe(settings);
+        tx.saveBilling(
+          tx.get().withChanges({ billingHour: BillingHour.parse('18:45'), issuerLegalName: 'Otra SRL' }),
+          later,
+        );
+        expect(tx.get().billingHour.value).toBe('18:45');
+        throw boom;
+      }),
+    ).toThrow(boom);
+
+    const after = settings.get();
+    expect(after.billingHour.value).toBe('09:00');
+    expect(after.pointOfSale?.value).toBe(3);
+    expect(after.issuerLegalName).toBeNull();
+    expect(settings.updatedAt?.toISOString()).toBe(t0.toISOString());
+
+    // sin fila previa, el rollback vuelve a no tener fila
+    const empty = new InMemorySettingsRepository();
+    const uowEmpty = new InMemoryUnitOfWork({ users, sessions, settings: empty });
+    expect(() =>
+      uowEmpty.run(({ settings: tx }) => {
+        tx.saveBilling(tx.get().withChanges({ billingHour: BillingHour.parse('18:45') }), later);
+        throw boom;
+      }),
+    ).toThrow(boom);
+    expect(empty.updatedAt).toBeNull();
+    expect(empty.get().billingHour.value).toBe('11:00');
   });
 
   it('rechaza una fn que devuelve una Promise y no deja sus cambios síncronos', () => {

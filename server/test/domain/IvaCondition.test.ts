@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { InvalidIvaCondition } from '../../src/domain/client/errors.js';
-import { IVA_CONDITIONS, IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { InvalidIvaCondition } from '../../src/domain/shared/errors.js';
+import { IVA_CONDITIONS, IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 
 const EXPECTED: ReadonlyArray<readonly [number, string]> = [
   [1, 'IVA Responsable Inscripto'],

@@ -1,7 +1,8 @@
+import { parseBoundedText } from '../shared/boundedText.js';
 import type { Email } from '../shared/Email.js';
+import type { IvaCondition } from '../shared/IvaCondition.js';
 import type { Cuit } from './Cuit.js';
 import { InvalidClientData } from './errors.js';
-import type { IvaCondition } from './IvaCondition.js';
 
 export const CLIENT_STATUSES = ['activo', 'inactivo'] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
@@ -105,23 +106,20 @@ function validated(data: ClientData): ClientData {
 export const CLIENT_BUSINESS_NAME_MAX_LENGTH = 200;
 export const CLIENT_ADDRESS_MAX_LENGTH = 200;
 
-function parseBoundedText(raw: string, max: number, message: string): string {
-  if (typeof raw !== 'string') throw new InvalidClientData(message);
-  const trimmed = raw.trim();
-  if (trimmed.length === 0 || trimmed.length > max) throw new InvalidClientData(message);
-  return trimmed;
-}
-
 /** Razón social: trim, de 1 a 200 caracteres (S-01); si no, `InvalidClientData`. */
 export function parseBusinessName(raw: string): string {
   return parseBoundedText(
     raw,
     CLIENT_BUSINESS_NAME_MAX_LENGTH,
-    'La razón social debe tener entre 1 y 200 caracteres',
+    () => new InvalidClientData('La razón social debe tener entre 1 y 200 caracteres'),
   );
 }
 
 /** Domicilio: trim, de 1 a 200 caracteres (S-01); si no, `InvalidClientData`. */
 export function parseAddress(raw: string): string {
-  return parseBoundedText(raw, CLIENT_ADDRESS_MAX_LENGTH, 'El domicilio debe tener entre 1 y 200 caracteres');
+  return parseBoundedText(
+    raw,
+    CLIENT_ADDRESS_MAX_LENGTH,
+    () => new InvalidClientData('El domicilio debe tener entre 1 y 200 caracteres'),
+  );
 }

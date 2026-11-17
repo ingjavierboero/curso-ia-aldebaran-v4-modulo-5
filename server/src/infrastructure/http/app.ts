@@ -24,6 +24,8 @@ import type { DeactivateProduct } from '../../application/product/DeactivateProd
 import type { ListProducts } from '../../application/product/ListProducts.js';
 import type { ReactivateProduct } from '../../application/product/ReactivateProduct.js';
 import type { UpdateProduct } from '../../application/product/UpdateProduct.js';
+import type { GetBillingSettings } from '../../application/settings/GetBillingSettings.js';
+import type { UpdateBillingSettings } from '../../application/settings/UpdateBillingSettings.js';
 import type { CreateUser } from '../../application/user/CreateUser.js';
 import type { DeactivateUser } from '../../application/user/DeactivateUser.js';
 import type { ListUsers } from '../../application/user/ListUsers.js';
@@ -41,6 +43,7 @@ import { clientsRoutes } from './routes/clients.js';
 import { healthRoutes } from './routes/health.js';
 import { passwordResetRoutes } from './routes/passwordReset.js';
 import { productsRoutes } from './routes/products.js';
+import { settingsRoutes } from './routes/settings.js';
 import { setupRoutes } from './routes/setup.js';
 import { usersRoutes } from './routes/users.js';
 import { defaultSecureCookie } from './sessionCookie.js';
@@ -82,6 +85,9 @@ export interface AppDeps {
   updateProduct: Pick<UpdateProduct, 'execute'>;
   deactivateProduct: Pick<DeactivateProduct, 'execute'>;
   reactivateProduct: Pick<ReactivateProduct, 'execute'>;
+  /** Configuración de facturación (FEAT-011): lectura para los tres perfiles, cambios solo Admin. */
+  getBillingSettings: Pick<GetBillingSettings, 'execute'>;
+  updateBillingSettings: Pick<UpdateBillingSettings, 'execute'>;
   clock: Clock;
   logger: Logger;
   /** `Secure` en la cookie de sesión. Por defecto, sí, salvo con `NODE_ENV` `development` o `test`. */
@@ -175,6 +181,7 @@ export function createApp(deps: AppDeps): Express {
     usersRoutes(deps),
     clientsRoutes(deps),
     productsRoutes(deps),
+    settingsRoutes(deps),
   );
 
   app.use((_req: Request, res: Response) => {

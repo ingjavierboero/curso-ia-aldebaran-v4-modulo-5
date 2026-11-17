@@ -3,7 +3,7 @@ import { Client } from '../../src/domain/client/Client.js';
 import type { ClientRepository } from '../../src/domain/client/ClientRepository.js';
 import { Cuit } from '../../src/domain/client/Cuit.js';
 import { DuplicateBillingEmail, DuplicateCuit } from '../../src/domain/client/errors.js';
-import { IvaCondition } from '../../src/domain/client/IvaCondition.js';
+import { IvaCondition } from '../../src/domain/shared/IvaCondition.js';
 import { Email } from '../../src/domain/shared/Email.js';
 import { DrizzleClientRepository } from '../../src/infrastructure/db/DrizzleClientRepository.js';
 import { InvalidStoredValue } from '../../src/infrastructure/db/storedValue.js';
