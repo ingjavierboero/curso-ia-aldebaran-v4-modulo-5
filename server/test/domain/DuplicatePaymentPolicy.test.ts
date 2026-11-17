@@ -26,6 +26,13 @@ describe('DuplicatePaymentPolicy', () => {
 
     // Sin pagos imputados, el mismo comprobante es un pago nuevo.
     expect(evaluateReceipt(receipt(), []).kind).toBe('nuevo');
+
+    // Un duplicado exacto gana sobre una coincidencia parcial, aunque la parcial esté antes.
+    const partial = receipt({ operationNumber: null });
+    const complete = receipt();
+    const mixed = evaluateReceipt(receipt(), [partial, complete]);
+    expect(mixed.kind).toBe('duplicado');
+    expect(mixed.kind === 'duplicado' && mixed.matched).toBe(complete);
   });
 
   // AC-02 y AC-03 (FR-02): formato raro del número de operación
@@ -83,6 +90,9 @@ describe('DuplicatePaymentPolicy', () => {
     for (const payerCuit of [null, '', '   ']) {
       expect(evaluateReceipt(receipt({ payerCuit }), imputed).kind).toBe('datos_no_extraidos');
     }
+
+    // Un pago imputado con datos inválidos no cuenta para comparar.
+    expect(evaluateReceipt(receipt(), [receipt({ amountCents: 0 })]).kind).toBe('nuevo');
   });
 
   // AC-08 (FR-06, FR-07) y AC-10 (NFR-01, NFR-02): duplicado dentro del email y límite de tiempo
@@ -96,6 +106,10 @@ describe('DuplicatePaymentPolicy', () => {
     ]);
     // Dos iguales en el mismo email, sin imputados: cuenta uno solo.
     expect(evaluateEmailReceipts([receipt(), receipt()], []).map((v) => v.kind)).toEqual(['nuevo', 'duplicado']);
+    // Un comprobante inválido en el medio no entra al pool ni cambia la decisión de los demás.
+    expect(
+      evaluateEmailReceipts([receipt({ amountCents: null }), receipt(), receipt()], []).map((v) => v.kind),
+    ).toEqual(['datos_no_extraidos', 'nuevo', 'duplicado']);
 
     // Mil imputados del cliente, preparados fuera de la medición.
     const thousand = Array.from({ length: 1000 }, (_, i) =>
