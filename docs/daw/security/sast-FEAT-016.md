@@ -34,3 +34,6 @@ Result: PASSED
 
 Ronda anterior (64957a2): BLOCKED por F-SAST-13 con el audit completo; el ticket se pausó hasta
 FIX-004 (PR #16), que fijó el alcance del audit en las dependencias de producción.
+
+Re-chequeo tras la vuelta desde VERIFY (8b19e5a): el cambio es solo de tests, sin código de
+producción ni dependencias nuevas; `npm audit --omit=dev` sigue en 0.

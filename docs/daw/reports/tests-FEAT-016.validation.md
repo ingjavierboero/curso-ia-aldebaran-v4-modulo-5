@@ -6,7 +6,7 @@
   ✅ F-TEST-02: 719 test(s): 719 passed, 0 failed, 0 skipped — and they add up
   ✅ F-TEST-08: no failing tests
   ✅ F-TEST-03: no failures to name
-  ✅ F-TEST-04: coverage stated: line 100%, branch 95%, function 100%
+  ✅ F-TEST-04: coverage stated: line 100%, branch 100%, function 100%
   ✅ F-TEST-05: floor 80%, the method default (testing.instructions.md) — the project declares none of its own
   ✅ F-TEST-06: nothing skipped
 ────────────────────────────────────────────────────────────────
