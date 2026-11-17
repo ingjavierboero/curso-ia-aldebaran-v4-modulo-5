@@ -5,7 +5,7 @@
 | Ticket | FEAT-016 |
 | Tracker | none |
 | Date | 2026-11-17 |
-| PRD loops | 1 |
+| PRD loops | 2 |
 | Loops since last human decision | 0 |
 
 ## Context and Problem
@@ -32,7 +32,7 @@ pagos aplica su decisión cuando llegue ese módulo (decisión D-07).
 - FR-01: El sistema debe considerar que un comprobante es el mismo pago que otro ya imputado del mismo cliente cuando coinciden el CUIT del ordenante, el monto, la fecha del pago y el número de operación (decisión D-01).
 - FR-02: El sistema debe comparar los números de operación tomando solo sus letras y dígitos, sin distinguir mayúsculas de minúsculas y respetando los ceros a la izquierda (decisión D-05).
 - FR-03: El sistema debe decidir "pago duplicado" para un comprobante que es el mismo pago que otro ya imputado, y esa decisión indica que no se usa para imputar ninguna factura (decisiones D-03 y D-07).
-- FR-04: Si un comprobante no tiene número de operación o no tiene fecha del pago, y existe un comprobante ya imputado del mismo cliente que coincide en los datos que sí tiene (CUIT del ordenante, monto y el dato restante), el sistema debe decidir "posible pago duplicado" (decisiones D-02 y D-08).
+- FR-04: Si al comprobante o al pago ya imputado le falta el número de operación, la fecha del pago o ambos, y coinciden en el CUIT del ordenante, el monto y los datos que tienen los dos, el sistema debe decidir "posible pago duplicado" (decisiones D-02, D-08, D-10 y D-11).
 - FR-05: El sistema debe decidir "pago nuevo" para un comprobante que difiere de todos los ya imputados del cliente en al menos uno de los datos que tiene.
 - FR-06: Cuando un email trae varios comprobantes, el sistema debe dar una decisión por comprobante, en el mismo orden, sin que el duplicado cambie la decisión de los demás (decisión D-04).
 - FR-07: Cuando un email trae dos comprobantes iguales entre sí, el sistema debe decidir como "pago duplicado" el segundo, aunque ninguno esté ya imputado (decisión D-09).
@@ -56,6 +56,8 @@ pagos aplica su decisión cuando llegue ese módulo (decisión D-07).
 - AC-08 (FR-06, FR-07): WHEN un email trae dos comprobantes, uno igual a un pago ya imputado y otro nuevo, THE sistema SHALL decidir ["pago duplicado", "pago nuevo"]; y WHEN trae dos comprobantes iguales entre sí sin pagos imputados, SHALL decidir ["pago nuevo", "pago duplicado"].
 - AC-09 (FR-08): IF un comprobante trae un monto vacío, 0 o -100, o el CUIT del ordenante vacío, THEN THE sistema SHALL decidir "datos no extraídos" y no "pago duplicado", aunque haya un comprobante imputado con los demás datos iguales.
 - AC-10 (NFR-01, NFR-02): WHEN el sistema evalúa el mismo comprobante dos veces contra los mismos 1000 comprobantes imputados, THE sistema SHALL dar la misma decisión las dos veces, en menos de 50 ms cada una.
+- AC-11 (FR-04): IF llega un comprobante completo y el pago ya imputado coincide en CUIT, monto y fecha pero no tiene número de operación, THEN THE sistema SHALL decidir "posible pago duplicado".
+- AC-12 (FR-04): IF un comprobante no trae fecha ni número de operación y existe un pago ya imputado del cliente con el mismo CUIT y monto, THEN THE sistema SHALL decidir "posible pago duplicado".
 
 ## Out of Scope
 
@@ -71,7 +73,7 @@ pagos aplica su decisión cuando llegue ese módulo (decisión D-07).
 - Descartar un pago legítimo: la regla exige los cuatro datos iguales, incluido el número de operación (FR-01); si falta un dato decide una persona (FR-04).
 - Imputar dos veces porque el número de operación vino con otro formato: comparación por letras y dígitos sin mayúsculas (FR-02).
 - Un error de extracción del LLM en la fecha o el número genera un pago "nuevo" que en realidad es duplicado: la coincidencia de monto existente (RF-134 a RF-137) y la confirmación humana del pago (RF-143) siguen siendo la última barrera.
-- Decisiones del usuario (2026-11-17): D-01 el mismo pago se define por CUIT del ordenante, monto, fecha del pago y número de operación; D-02 sin número de operación y con un pago anterior de mismo CUIT, monto y fecha → "posible pago duplicado" (Revisión manual); D-03 el duplicado se registra como "pago duplicado", sin cambiar facturas ni avisar al cliente; D-04 en un email con varios comprobantes se descarta solo el duplicado; D-05 el número de operación se compara solo con letras y dígitos, sin mayúsculas, y los ceros a la izquierda cuentan; D-06 se trabaja como ticket aparte, antes del control de pagos, con los tests de unidad primero (CLASSIFY); D-07 los criterios describen la decisión de la regla, y aplicar la marca o la Revisión manual queda fuera de alcance (PLAN); D-08 sin fecha del pago se trata igual que sin número de operación (PLAN); D-09 dentro de un mismo email cuenta un solo comprobante igual: el segundo es duplicado (PLAN).
+- Decisiones del usuario (2026-11-17): D-01 el mismo pago se define por CUIT del ordenante, monto, fecha del pago y número de operación; D-02 sin número de operación y con un pago anterior de mismo CUIT, monto y fecha → "posible pago duplicado" (Revisión manual); D-03 el duplicado se registra como "pago duplicado", sin cambiar facturas ni avisar al cliente; D-04 en un email con varios comprobantes se descarta solo el duplicado; D-05 el número de operación se compara solo con letras y dígitos, sin mayúsculas, y los ceros a la izquierda cuentan; D-06 se trabaja como ticket aparte, antes del control de pagos, con los tests de unidad primero (CLASSIFY); D-07 los criterios describen la decisión de la regla, y aplicar la marca o la Revisión manual queda fuera de alcance (PLAN); D-08 sin fecha del pago se trata igual que sin número de operación (PLAN); D-09 dentro de un mismo email cuenta un solo comprobante igual: el segundo es duplicado (PLAN); D-10 si al pago ya imputado le falta el número de operación o la fecha y coincide en los datos que tiene, se decide "posible pago duplicado" (CODE); D-11 sin fecha ni número de operación, con el mismo CUIT y monto, se decide "posible pago duplicado" (CODE).
 - Supuestos marcados (no los dijo el usuario): S-01 se compara contra todos los comprobantes ya imputados del mismo cliente, sin límite de tiempo; S-02 un monto vacío, cero o negativo, o un CUIT vacío, cuenta como dato no extraído (RF-132); S-03 "comprobante ya imputado" es uno que llevó facturas a Pago recibido o Pagada.
 
 ## Dependencies
