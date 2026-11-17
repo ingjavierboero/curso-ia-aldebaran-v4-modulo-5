@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Ticket | FEAT-016 |
-| Tools | revisión manual del diff 0cc955c..01ee3f1, oxlint --type-aware, npm audit |
+| Tools | revisión manual del diff 0cc955c..01ee3f1, oxlint --type-aware, `npm audit --omit=dev` (comando de `AGENTS.md`, ADR-009), `npm audit` completo para el listado de desarrollo |
 | Date | 2026-11-17 |
 
 | Rule | Verdict | Notes |
@@ -20,7 +20,7 @@
 | F-SAST-10 | ✅ | no registra nada (sin console ni logger); el CUIT no se loguea |
 | F-SAST-11 | ✅ | sin superficie de subida de archivos |
 | F-SAST-12 | ✅ | sin endpoints nuevos |
-| F-SAST-13 | ❌ | `npm audit`: 7 High por GHSA-fc5q-39xc-vjpf (ReDoS en picomatch, rango `*`) vía vite, vitest, @vitest/coverage-v8, @vitejs/plugin-react, tinyglobby y fdir (package-lock.json:6368, picomatch 4.0.7); solo dependencias de desarrollo (`npm audit --omit=dev`: 0); aviso publicado después de FEAT-011; sin versión corregida; no lo introduce este ticket (lockfile sin cambios en el diff) |
+| F-SAST-13 | ✅ | `npm audit --omit=dev`: 0 vulnerabilidades (código 0). Dependencias de desarrollo, listadas sin bloquear según ADR-009: 7 High por GHSA-fc5q-39xc-vjpf (ReDoS en picomatch <= 4.0.7, sin versión corregida) vía vite, vitest, @vitest/coverage-v8, @vitejs/plugin-react, tinyglobby y fdir (package-lock.json:6368) |
 | F-SAST-14 | ✅ | la entrada se valida en `normalize`: CUIT vacío o monto no entero positivo → datos no extraídos |
 | F-SAST-15 | ✅ | no lanza excepciones ni expone detalles internos |
 | F-SAST-16 | ✅ | sin dependencias nuevas |
@@ -29,8 +29,8 @@
 ## Suppressions
 None.
 
-Total: 16 clean, 1 vulnerabilities (0 critical, 1 high)
-Result: BLOCKED
+Total: 17 clean, 0 vulnerabilities (0 critical, 0 high)
+Result: PASSED
 
-Decisión del usuario (2026-11-17): pausar FEAT-016 hasta que exista una versión corregida de
-picomatch; la actualización va en un ticket aparte y FEAT-016 se retoma con un SAST nuevo.
+Ronda anterior (64957a2): BLOCKED por F-SAST-13 con el audit completo; el ticket se pausó hasta
+FIX-004 (PR #16), que fijó el alcance del audit en las dependencias de producción.

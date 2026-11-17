@@ -18,6 +18,9 @@ La cobertura es la de `server/src/domain/payment/DuplicatePaymentPolicy.ts`, el 
 código nuevo del ticket (statements 97.56%). Los 5 tests de la spec están en
 `server/test/domain/DuplicatePaymentPolicy.test.ts`.
 
+Re-corrida al retomar el ticket (2026-11-17), con `main` sumado a la rama (FIX-004): mismos
+resultados, 719/719, typecheck y lint limpios.
+
 ## Failures
 (none)
 

@@ -3,8 +3,8 @@
 ────────────────────────────────────────────────────────────────
   ✅ F-SAST-COVERAGE: all 17 catalogued categories carry a verdict
   ✅ F-SAST-SEVERITY: no Critical or High category filed under a warning marker
-  ✅ F-SAST-LOCATION: 1 finding(s), each naming a file and a line
-  ✅ F-SAST-VERDICT: 1 Critical/High finding(s) and the report says BLOCKED
+  ✅ F-SAST-LOCATION: no findings to locate
+  ✅ F-SAST-VERDICT: no Critical/High findings; the result is allowed to pass
   ✅ F-SAST-MEDIUM: 0 Medium finding(s), each fixed or suppressed
   ✅ F-SAST-SUPPRESS: no Critical or High finding is filed as suppressed
   ✅ F-SAST-18: no suppressions to check
