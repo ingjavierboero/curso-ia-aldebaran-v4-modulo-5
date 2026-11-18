@@ -1,0 +1,9 @@
+# Decisiones FEAT-017b
+
+- `tsconfig.e2e.json` usa `module`/`moduleResolution` `nodenext` (como `server/`), `noEmit` y `tsBuildInfoFile` bajo `node_modules/.tmp` (como `web/`): `tsconfig.base.json` no define esos campos. — implementador, revisado por module-verifier — 2026-11-17 — Block 1
+- `assertTempDatabasePath` rechaza además `tmpdir()` mismo, rutas con `..` que salen de tmp y prefijos sin separador; `webServerProblems` trata `reuseExistingServer` ausente como problema (Playwright lo interpretaría como `!CI`). — implementador, revisado por module-verifier y arch-auditor — 2026-11-17 — Block 1
+- `assertRunDir`: el directorio de la corrida tiene que ser hijo directo de `tmpdir()` y llamarse `aldebaran-e2e-*`; lo exigen la config (también si `E2E_RUN_DIR` viene del entorno) y el teardown antes de `rmSync` (W-02 del arch-auditor). — orquestador — 2026-11-17 — Block 1
+- `serverEnv` deja `ANTHROPIC_API_KEY` vacía: Playwright mezcla `process.env` con el env de `webServer`, así que una clave del shell llegaría al server de la prueba (W-01). — orquestador — 2026-11-17 — Block 1
+- `baseURL` y las URLs de `webServers()` salen de `WEB_URL`/`SERVER_URL` de `e2eSettings` (W-04). El proxy `/api` de `web/vite.config.ts` sigue fijando el 3000 a mano. — orquestador — 2026-11-17 — Block 1
+- Deuda aceptada (W-03): si un servidor no arranca, Playwright no corre el `globalTeardown` y el directorio `aldebaran-e2e-*` queda en tmp; en una corrida exitosa el teardown borra el directorio con la SQLite todavía abierta (funciona en macOS/Linux). — orquestador — 2026-11-17 — Block 1
+- Deuda aceptada (W-05): las aserciones sobre `playwright.config.ts` son regex sobre el texto (ADR-011: el test no importa Playwright), y los tipos de `e2eSettings` se repiten a mano en `e2eConfig.test.ts`. — orquestador — 2026-11-17 — Block 1

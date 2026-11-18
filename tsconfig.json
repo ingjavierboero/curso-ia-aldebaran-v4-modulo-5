@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./server" },
-    { "path": "./web" }
+    { "path": "./web" },
+    { "path": "./tsconfig.e2e.json" }
   ]
 }

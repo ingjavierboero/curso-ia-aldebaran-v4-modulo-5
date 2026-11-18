@@ -29,3 +29,5 @@ data/*.db*
 
 # Salida de los tests
 coverage/
+test-results/
+playwright-report/
