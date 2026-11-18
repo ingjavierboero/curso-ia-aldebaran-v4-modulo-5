@@ -4,9 +4,25 @@ import { describe, expect, it } from 'vitest';
 
 // Se lee como texto a propósito: el spec pide no sumar un parser de YAML como dependencia.
 const ciPath = fileURLToPath(new URL('../../../../.github/workflows/ci.yml', import.meta.url));
+// `e2e/e2eSettings.ts` se importa por URL y no con un import estático: queda fuera del `rootDir` de
+// server/tsconfig.json (igual que en e2eConfig.test.ts).
+const settingsUrl = new URL('../../../../e2e/e2eSettings.ts', import.meta.url);
 
 function readCi(): string {
   return readFileSync(ciPath, 'utf8');
+}
+
+// El `outputDir` de Playwright: el upload de evidencia del job `e2e` tiene que apuntar ahí.
+async function loadOutputDir(): Promise<string> {
+  const mod: unknown = await import(settingsUrl.href);
+  if (typeof mod !== 'object' || mod === null || !('E2E_OUTPUT_DIR' in mod)) {
+    throw new Error('e2e/e2eSettings.ts no exporta `E2E_OUTPUT_DIR`');
+  }
+  const { E2E_OUTPUT_DIR } = mod;
+  if (typeof E2E_OUTPUT_DIR !== 'string' || E2E_OUTPUT_DIR === '') {
+    throw new Error('`E2E_OUTPUT_DIR` tiene que ser un string no vacío');
+  }
+  return E2E_OUTPUT_DIR;
 }
 
 interface Line {
@@ -126,24 +142,35 @@ function stepsUsing(job: Job, action: string): Step[] {
 }
 
 // Los comandos que corre un job, uno por línea (un `run: |` aporta cada línea de su bloque).
+function stepCommands(step: Step): string[] {
+  const run = stepValue(step, 'run');
+  if (run === undefined) {
+    return [];
+  }
+  if (/^[|>]/.test(run)) {
+    return stepChild(step, 'run').map((line) => line.text);
+  }
+  return [run];
+}
+
 function runCommands(job: Job): string[] {
-  return parseSteps(job).flatMap((step) => {
-    const run = stepValue(step, 'run');
-    if (run === undefined) {
-      return [];
-    }
-    if (/^[|>]/.test(run)) {
-      return stepChild(step, 'run').map((line) => line.text);
-    }
-    return [run];
-  });
+  return parseSteps(job).flatMap((step) => stepCommands(step));
 }
 
 // Cualquier comando que corra tests: `npm test`, `npm run test*`, `npm t`, vitest o playwright.
 const TEST_COMMAND = /\bnpm\s+(?:run\s+)?test\b|\bnpm\s+t\b|\bvitest\b|\bplaywright\b/;
 
+// La instalación del navegador (`[npx [--no-install]] playwright install [flags] [navegadores]`) es una
+// instalación y no un comando de test. Solo palabras y flags: un `&&` o un `;` encadenado la descalifica,
+// así no se puede colar un `playwright test` detrás.
+const PLAYWRIGHT_INSTALL = /^(?:npx\s+(?:--no-install\s+)?|npm\s+exec\s+(?:--no\s+)?(?:--\s+)?)?playwright\s+install(?:\s+[\w-]+)*$/;
+
 function testCommands(job: Job): string[] {
-  return runCommands(job).filter((command) => TEST_COMMAND.test(command));
+  return runCommands(job).filter((command) => TEST_COMMAND.test(command) && !PLAYWRIGHT_INSTALL.test(command));
+}
+
+function stepName(step: Step): string {
+  return stepValue(step, 'name') ?? stepValue(step, 'uses') ?? stepValue(step, 'run') ?? '?';
 }
 
 function needsOf(job: Job): string[] {
@@ -183,6 +210,16 @@ function triggerProblems(raw: string): string[] {
   return problems;
 }
 
+// R-06 (threat-FEAT-017b): la única excepción es el upload de evidencia del job `e2e`, con `failure()`
+// exacto. Cualquier otro valor (`always()`, `failure() || always()`), otro paso u otro job no entra.
+function isEvidenceUploadIf(job: Job, step: Step, stepIf: string): boolean {
+  return (
+    job.id === 'e2e' &&
+    stepIf === 'failure()' &&
+    stepValue(step, 'uses')?.startsWith('actions/upload-artifact@') === true
+  );
+}
+
 // Ningún job (ni paso) puede saltear la cadena de `needs:`: ni con un `if:` que corre aunque la etapa
 // anterior haya fallado, ni con `continue-on-error`, que deja el job en verde con un paso roto.
 function skipChainProblems(raw: string): string[] {
@@ -197,9 +234,13 @@ function skipChainProblems(raw: string): string[] {
       problems.push(`el job \`${job.id}\` declara \`continue-on-error: ${jobContinue.value}\``);
     }
     for (const step of parseSteps(job)) {
-      const name = stepValue(step, 'name') ?? stepValue(step, 'uses') ?? stepValue(step, 'run') ?? '?';
+      const name = stepName(step);
       const stepIf = stepValue(step, 'if');
-      if (stepIf !== undefined && /always\(\)|failure\(\)|cancelled\(\)/.test(stepIf)) {
+      if (
+        stepIf !== undefined &&
+        /always\(\)|failure\(\)|cancelled\(\)/.test(stepIf) &&
+        !isEvidenceUploadIf(job, step, stepIf)
+      ) {
         problems.push(`el paso \`${name}\` del job \`${job.id}\` declara \`if: ${stepIf}\``);
       }
       const stepContinue = stepValue(step, 'continue-on-error');
@@ -275,7 +316,79 @@ function checkoutProblems(raw: string): string[] {
   return problems;
 }
 
-// Los tests corren en modo mock en las tres etapas: `MOCK_MODE: "true"` global y en ningún otro lado,
+// R-04 (threat-FEAT-017b): `npx` y `npm exec` no pueden bajar paquetes del registro si faltan en
+// `node_modules` (`playwright`, `tsx`): `npx` va con `--no-install` y `npm exec` (o su alias `npm x`)
+// con `--no`, y ninguno con `--yes`/`-y`, que vuelve a habilitar la descarga.
+function installProblems(raw: string): string[] {
+  const problems: string[] = [];
+  for (const job of parseJobs(raw)) {
+    for (const step of parseSteps(job)) {
+      for (const command of stepCommands(step)) {
+        const npx = /\bnpx\s/.test(command);
+        const npmExec = /\bnpm\s+(?:exec|x)\s/.test(command);
+        const unblocked =
+          (npx && !/\bnpx\s+--no-install\s/.test(command)) ||
+          (npmExec && !/\bnpm\s+(?:exec|x)\s+--no\s/.test(command)) ||
+          ((npx || npmExec) && /\s(?:--yes|-y)(?:\s|$)/.test(command));
+        if (unblocked) {
+          problems.push(`el paso \`${stepName(step)}\` del job \`${job.id}\` resuelve paquetes sin bloquear la descarga`);
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+// R-03 y R-06 (threat-FEAT-017b): la evidencia del job `e2e` se sube solo si la etapa falla, desde el
+// `outputDir` de Playwright, por 7 días, y el paso falla si no encuentra archivos.
+function evidenceProblems(raw: string, outputDir: string): string[] {
+  const job = findJob(raw, 'e2e');
+  if (job === undefined) {
+    return ['falta el job `e2e`'];
+  }
+  const uploads = stepsUsing(job, 'actions/upload-artifact');
+  const upload = uploads[0];
+  if (uploads.length !== 1 || upload === undefined) {
+    return [`el job \`e2e\` tiene que tener un solo paso de actions/upload-artifact, tiene ${uploads.length}`];
+  }
+  const problems: string[] = [];
+  const stepIf = stepValue(upload, 'if');
+  if (stepIf !== 'failure()') {
+    problems.push(`el upload del job \`e2e\` necesita \`if: failure()\`, tiene: ${stepIf ?? '(nada)'}`);
+  }
+  const withKeys = ownKeys(stepChild(upload, 'with'));
+  const expected: [string, string][] = [
+    ['name', 'e2e-evidencia'],
+    ['path', `${outputDir}/`],
+    ['retention-days', '7'],
+    ['if-no-files-found', 'error'],
+  ];
+  for (const [key, value] of expected) {
+    const actual = withKeys.get(key)?.value;
+    if (actual !== value) {
+      problems.push(`el upload del job \`e2e\` necesita \`${key}: ${value}\`, tiene: ${actual ?? '(nada)'}`);
+    }
+  }
+  // Exactamente esas cuatro claves: cualquier otra cambia qué se publica o cómo.
+  const allowed = new Set(expected.map(([key]) => key));
+  for (const key of withKeys.keys()) {
+    if (!allowed.has(key)) {
+      problems.push(`el upload del job \`e2e\` no admite la clave \`${key}\` en \`with\``);
+    }
+  }
+  return problems;
+}
+
+// Todos los pasos con `if:`, como `job/paso`.
+function stepsWithIf(raw: string): string[] {
+  return parseJobs(raw).flatMap((job) =>
+    parseSteps(job)
+      .filter((step) => step.keys.has('if'))
+      .map((step) => `${job.id}/${stepName(step)}`),
+  );
+}
+
+// Los tests corren en modo mock en las cuatro etapas: `MOCK_MODE: "true"` global y en ningún otro lado,
 // para que ningún job ni paso lo pise.
 function mockModeProblems(raw: string): string[] {
   const problems: string[] = [];
@@ -306,7 +419,7 @@ function variantInJob(raw: string, id: string, search: string | RegExp, replacem
   return raw.slice(0, start) + variant(raw.slice(start, end), search, replacement) + raw.slice(end);
 }
 
-const JOBS = ['lint', 'unit', 'integration'];
+const JOBS = ['lint', 'unit', 'integration', 'e2e'];
 
 describe('workflow de CI en pull requests', () => {
   it('test_ci_dispara_en_pull_request', () => {
@@ -322,9 +435,9 @@ describe('workflow de CI en pull requests', () => {
     }
   });
 
-  it('test_ci_tres_jobs_lint_unit_integration', () => {
+  it('test_ci_cuatro_jobs_lint_unit_integration_e2e', () => {
     const jobs = parseJobs(readCi());
-    expect(jobs.map((job) => job.id), 'los jobs tienen que ser exactamente lint, unit e integration').toEqual(JOBS);
+    expect(jobs.map((job) => job.id), 'los jobs tienen que ser exactamente lint, unit, integration y e2e').toEqual(JOBS);
     for (const job of jobs) {
       expect(job.keys.get('name')?.value, `el job \`${job.id}\` tiene que llamarse igual que su id`).toBe(job.id);
     }
@@ -336,12 +449,19 @@ describe('workflow de CI en pull requests', () => {
     expect(needs.lint, 'falta el job `lint`').toBeDefined();
     expect(needs.unit, 'falta el job `unit`').toBeDefined();
     expect(needs.integration, 'falta el job `integration`').toBeDefined();
-    if (needs.lint === undefined || needs.unit === undefined || needs.integration === undefined) {
+    expect(needs.e2e, 'falta el job `e2e`').toBeDefined();
+    if (
+      needs.lint === undefined ||
+      needs.unit === undefined ||
+      needs.integration === undefined ||
+      needs.e2e === undefined
+    ) {
       return;
     }
     expect(needsOf(needs.lint), '`lint` es la primera etapa').toEqual([]);
     expect(needsOf(needs.unit), '`unit` tiene que depender de `lint`').toEqual(['lint']);
     expect(needsOf(needs.integration), '`integration` tiene que depender de `unit`').toEqual(['unit']);
+    expect(needsOf(needs.e2e), '`e2e` tiene que depender de `integration`').toEqual(['integration']);
   });
 
   it('test_ci_lint_corre_lint_y_typecheck', () => {
@@ -376,6 +496,50 @@ describe('workflow de CI en pull requests', () => {
       integration === undefined ? [] : testCommands(integration),
       'el job `integration` corre solo `npm run test:integration`',
     ).toEqual(['npm run test:integration']);
+  });
+
+  it('test_ci_e2e_instala_chromium_y_corre_test_e2e', () => {
+    const raw = readCi();
+    const e2e = findJob(raw, 'e2e');
+    expect(e2e, 'falta el job `e2e`').toBeDefined();
+    if (e2e === undefined) {
+      return;
+    }
+    const steps = parseSteps(e2e);
+    expect(steps.length, 'el job `e2e` tiene exactamente 6 pasos').toBe(6);
+    expect(stepsUsing(e2e, 'actions/checkout').length, 'el job `e2e` hace un checkout').toBe(1);
+    expect(stepsUsing(e2e, 'actions/setup-node').length, 'el job `e2e` usa setup-node').toBe(1);
+    expect(runCommands(e2e), 'el job `e2e` corre `npm ci`, instala Chromium y corre la prueba, en ese orden').toEqual([
+      'npm ci',
+      'npx --no-install playwright install --with-deps chromium',
+      'npm run test:e2e',
+    ]);
+    expect(testCommands(e2e), 'el job `e2e` corre solo `npm run test:e2e`').toEqual(['npm run test:e2e']);
+    expect(installProblems(raw)).toEqual([]);
+
+    // Un comando de test encadenado al de instalación sigue contando como comando de test.
+    const install = 'npx --no-install playwright install --with-deps chromium';
+    for (const chained of [
+      `${install} && npx playwright test`,
+      `${install}; npm run test:e2e`,
+      `${install} $(npm run test:e2e)`,
+    ]) {
+      const job = findJob(variantInJob(raw, 'e2e', `run: ${install}\n`, `run: ${chained}\n`), 'e2e');
+      expect(job === undefined ? [] : testCommands(job), `\`${chained}\` no se contó como comando de test`).toEqual([
+        chained,
+        'npm run test:e2e',
+      ]);
+    }
+  });
+
+  it('test_ci_e2e_sube_evidencia_solo_en_falla', async () => {
+    const raw = readCi();
+    const outputDir = await loadOutputDir();
+    expect(stepsWithIf(raw), 'el único paso con `if:` es el upload de evidencia del job `e2e`').toEqual([
+      'e2e/Upload e2e evidence',
+    ]);
+    expect(evidenceProblems(raw, outputDir)).toEqual([]);
+    expect(skipChainProblems(raw)).toEqual([]);
   });
 
   it('test_ci_mock_mode_global', () => {
@@ -432,6 +596,33 @@ describe('workflow de CI en pull requests', () => {
       '\n      - name: npm run test:unit\n        if: always()\n',
     );
     expect(skipChainProblems(stepSkipped)).toEqual(['el paso `npm run test:unit` del job `unit` declara `if: always()`']);
+
+    // La excepción del upload de evidencia es estricta: solo `failure()` exacto (R-06, threat-FEAT-017b).
+    for (const value of ['always()', 'failure() || always()']) {
+      const widened = variantInJob(raw, 'e2e', /\n {8}if: failure\(\)\n/, `\n        if: ${value}\n`);
+      expect(skipChainProblems(widened), `\`if: ${value}\` en el upload no fue rechazado`).toEqual([
+        `el paso \`Upload e2e evidence\` del job \`e2e\` declara \`if: ${value}\``,
+      ]);
+    }
+
+    // `failure()` en otro paso del job `e2e` tampoco entra en la excepción.
+    const onTest = variantInJob(
+      raw,
+      'e2e',
+      /\n {6}- name: npm run test:e2e\n/,
+      '\n      - name: npm run test:e2e\n        if: failure()\n',
+    );
+    expect(skipChainProblems(onTest)).toEqual(['el paso `npm run test:e2e` del job `e2e` declara `if: failure()`']);
+
+    // Ni un upload con `failure()` en otro job.
+    const otherJob = variantInJob(
+      raw,
+      'unit',
+      /\n {8}run: npm run test:unit\n/,
+      '\n        run: npm run test:unit\n\n      - name: Upload unit evidence\n        if: failure()\n' +
+        '        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2\n',
+    );
+    expect(skipChainProblems(otherJob)).toEqual(['el paso `Upload unit evidence` del job `unit` declara `if: failure()`']);
   });
 
   it('test_ci_continue_on_error_rechazado', () => {
@@ -454,11 +645,66 @@ describe('workflow de CI en pull requests', () => {
 
   it('test_ci_action_sin_sha_rechazada', () => {
     const raw = readCi();
-    expect(raw.split('\n').filter((line) => /^\s*-?\s*uses:/.test(line)).length, 'el workflow no usa actions').toBe(6);
+    expect(raw.split('\n').filter((line) => /^\s*-?\s*uses:/.test(line)).length, 'el workflow usa 9 actions').toBe(9);
     expect(unpinnedActions(raw)).toEqual([]);
 
     const tagged = variantInJob(raw, 'integration', /actions\/checkout@[0-9a-f]{40} # v7\.0\.1/, 'actions/checkout@v7');
     expect(unpinnedActions(tagged)).toEqual(['action sin SHA: uses: actions/checkout@v7']);
+
+    const upload = variantInJob(raw, 'e2e', /actions\/upload-artifact@[0-9a-f]{40} # v7\.0\.2/, 'actions/upload-artifact@v7');
+    expect(unpinnedActions(upload)).toEqual(['action sin SHA: uses: actions/upload-artifact@v7']);
+  });
+
+  it('test_ci_evidencia_mal_configurada_rechazada', async () => {
+    const raw = readCi();
+    const outputDir = await loadOutputDir();
+    expect(evidenceProblems(raw, outputDir)).toEqual([]);
+
+    const cases: [RegExp, string, string][] = [
+      [/\n {10}path: .*\n/, '\n          path: test-results/\n', 'path'],
+      [/\n {10}retention-days: 7\n/, '\n          retention-days: 30\n', 'retention-days'],
+      [/\n {10}if-no-files-found: error\n/, '\n          if-no-files-found: ignore\n', 'if-no-files-found'],
+    ];
+    for (const [search, replacement, key] of cases) {
+      const broken = variantInJob(raw, 'e2e', search, replacement);
+      const problems = evidenceProblems(broken, outputDir);
+      expect(problems, `un cambio en \`${key}\` no fue rechazado`).toHaveLength(1);
+      expect(problems[0], `el problema no nombra \`${key}\``).toContain(`necesita \`${key}: `);
+    }
+
+    // Una clave extra en el `with` (p. ej. subir también los archivos ocultos) también se rechaza.
+    const extra = variantInJob(
+      raw,
+      'e2e',
+      /\n {10}if-no-files-found: error\n/,
+      '\n          if-no-files-found: error\n          include-hidden-files: true\n',
+    );
+    expect(evidenceProblems(extra, outputDir)).toEqual([
+      'el upload del job `e2e` no admite la clave `include-hidden-files` en `with`',
+    ]);
+  });
+
+  it('test_ci_instalacion_sin_no_install_rechazada', () => {
+    const raw = readCi();
+    expect(installProblems(raw)).toEqual([]);
+
+    const variants = [
+      'npx playwright install --with-deps chromium',
+      'npm exec playwright install --with-deps chromium',
+      // `--yes`/`-y` después del bloqueo vuelve a habilitar la descarga.
+      'npx --no-install --yes playwright install --with-deps chromium',
+      'npx --no-install -y playwright install --with-deps chromium',
+      'npm exec --no --yes -- playwright install --with-deps chromium',
+      'npm exec --no -y -- playwright install --with-deps chromium',
+      // `npm x` es un alias de `npm exec`.
+      'npm x playwright install --with-deps chromium',
+    ];
+    for (const command of variants) {
+      const unblocked = variantInJob(raw, 'e2e', 'npx --no-install playwright install --with-deps chromium', command);
+      expect(installProblems(unblocked), `\`${command}\` no fue rechazado`).toEqual([
+        'el paso `Install Chromium` del job `e2e` resuelve paquetes sin bloquear la descarga',
+      ]);
+    }
   });
 
   it('test_ci_sin_secretos_rechazado', () => {

@@ -228,7 +228,37 @@ describe('testLayout (tests separados en unit e integration)', () => {
     const scripts = pkg.scripts ?? {};
     expect(scripts['test:unit']).toBe('vitest run --project server-unit --project web');
     expect(scripts['test:integration']).toBe('vitest run --project server-integration');
+    // FEAT-017b: la prueba e2e la corre Playwright, y `npm test` sigue siendo solo Vitest.
+    expect(scripts['test:e2e']).toBe('playwright test');
     expect(scripts.test).toBe('vitest run');
+  });
+
+  it('test_layout_vitest_no_levanta_e2e', async () => {
+    // FEAT-017b (AC-14): ningún proyecto de Vitest levanta la prueba de Playwright. Cada include se
+    // evalúa relativo a la carpeta de su config, igual que lo hace Vitest.
+    const smokeRelative = 'e2e/smoke.e2e.ts';
+    expect(existsSync(path.join(repoRoot, smokeRelative)), `${smokeRelative} debe existir`).toBe(true);
+
+    const projects = [
+      { config: new URL('../../../vitest.unit.config.js', import.meta.url), root: 'server' },
+      { config: new URL('../../../vitest.integration.config.js', import.meta.url), root: 'server' },
+      { config: new URL('../../../../web/vite.config.js', import.meta.url), root: 'web' },
+    ];
+    const names: string[] = [];
+    for (const { config, root } of projects) {
+      const { name, include } = await importTestOptions(config);
+      if (typeof name !== 'string') throw new Error(`${config.pathname} debe declarar test.name`);
+      if (!isStringArray(include)) {
+        throw new Error(`${config.pathname} debe declarar test.include como un array de strings`);
+      }
+      names.push(name);
+      const candidates = [path.posix.relative(root, smokeRelative), smokeRelative];
+      const matched = include.filter((glob) =>
+        candidates.some((candidate) => path.posix.matchesGlob(candidate, glob)),
+      );
+      expect(matched, `el proyecto ${name} matchea ${smokeRelative}`).toEqual([]);
+    }
+    expect(names.sort()).toEqual(['server-integration', 'server-unit', 'web']);
   });
 
   it('test_layout_test_fuera_de_carpeta_rechazado', () => {

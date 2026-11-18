@@ -81,6 +81,8 @@ const sourceSamples = [
   'web/src/pages/LoginPage.tsx',
   'web/src/router.test.tsx',
   'web/vite.config.ts',
+  'playwright.config.ts',
+  'e2e/smoke.e2e.ts',
 ];
 
 describe('lint (oxlint con tipos)', () => {

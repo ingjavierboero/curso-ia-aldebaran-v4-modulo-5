@@ -17,6 +17,7 @@ se las envía por email y valida con un LLM los comprobantes de pago que respond
 - Test: npm test
 - Test unit: npm run test:unit
 - Test integration: npm run test:integration
+- Test e2e: npm run test:e2e (la primera vez: npx playwright install chromium)
 - Typecheck: npm run typecheck
 - Lint: npm run lint
 - Audit: npm audit --omit=dev
