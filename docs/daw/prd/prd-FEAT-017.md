@@ -12,7 +12,7 @@
 | Sub-ticket | Title | PRD | ACs | Dependencies | Status |
 |---|---|---|---|---|---|
 | FEAT-017a | Tests separados en unit e integration, y CI en lint → unit → integration | prd-FEAT-017a.md | AC-02, AC-03, AC-04, AC-05, AC-06, AC-07, AC-08, AC-13, AC-15, AC-16 | none | done — merged to main (PR #18, 3ee3070) |
-| FEAT-017b | Etapa e2e en el CI con Playwright y prueba de humo de inicio de sesión | prd-FEAT-017b.md | AC-01, AC-09, AC-10, AC-11, AC-12, AC-14 | depends on a | active |
+| FEAT-017b | Etapa e2e en el CI con Playwright y prueba de humo de inicio de sesión | prd-FEAT-017b.md | AC-01, AC-09, AC-10, AC-11, AC-12, AC-14 | depends on a | done — PR #19 pending merge into main |
 
 Los 16 criterios salen del PRD original de FEAT-017 (validado el 2026-11-17, W-PRD-06 por 16 AC);
 la partición la decidió el usuario ese mismo día (D-05). FEAT-017a queda en 10 criterios porque
