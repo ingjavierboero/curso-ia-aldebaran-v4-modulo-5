@@ -16,7 +16,7 @@ concurrency:
 env:
   MOCK_MODE: "true"
 
-# Tres etapas encadenadas: si una falla, las siguientes no corren.
+# Cuatro etapas encadenadas: si una falla, las siguientes no corren.
 jobs:
   lint:
     name: lint
@@ -97,3 +97,45 @@ jobs:
 
       - name: npm run test:integration
         run: npm run test:integration
+
+  e2e:
+    name: e2e
+    needs: integration
+    runs-on: ubuntu-latest
+    # Un job colgado no consume más de 10 minutos; Playwright corta antes con su globalTimeout de
+    # 6 minutos para que el paso de evidencia llegue a correr (threat-FEAT-017b R-05).
+    timeout-minutes: 10
+    steps:
+      # Actions fijadas por SHA de commit, con el tag en comentario (threat-FEAT-017a R-02).
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # El token no queda en .git/config al alcance del código del PR (threat-FEAT-017a R-03).
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      # --no-install: playwright sale de node_modules, nunca del registro (threat-FEAT-017b R-04).
+      - name: Install Chromium
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: npm run test:e2e
+        run: npm run test:e2e
+
+      # Capturas y trazas solo si la etapa falla, por 7 días; es el único paso con condición
+      # (threat-FEAT-017b R-03, R-06). Fijada por SHA (threat-FEAT-017b R-04).
+      - name: Upload e2e evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-evidencia
+          path: test-results/e2e/
+          retention-days: 7
+          if-no-files-found: error
